@@ -38,3 +38,7 @@ yarn-error.log
 
 # Project Configs 
 mcp.json
+
+# Inteligência Artificial e Agentes RAG
+chroma_db/
+langchain.log
