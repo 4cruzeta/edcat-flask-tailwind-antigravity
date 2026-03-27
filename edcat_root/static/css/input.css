@@ -1,0 +1,6 @@
+@import "tailwindcss";
+@plugin "flowbite/plugin";
+
+/* Informamos ao compilador onde buscar nossas classes do tailwind (HTMLs) e Flowbite (JS Interno) */
+@source "../../pages/templates";
+@source "../../../node_modules/flowbite";

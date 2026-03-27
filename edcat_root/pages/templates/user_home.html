@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}EdCat V2 - User Dashboard{% endblock %}
+
+{% block content %}
+<div class="p-6 md:p-8 bg-white border border-gray-200 rounded-2xl shadow dark:bg-gray-800 dark:border-gray-700">
+    <h5 class="mb-2 text-3xl font-bold tracking-tight text-gray-900 dark:text-white relative inline-block">
+        Olá, {{ g.user_profile.full_name }}! 👋
+    </h5>
+    
+    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="p-6 bg-blue-50 dark:bg-gray-700/50 rounded-xl border border-blue-100 dark:border-gray-600">
+            <h6 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-2">Seu Status</h6>
+            <span class="bg-green-100 text-green-800 text-sm font-medium me-2 px-2.5 py-0.5 rounded dark:bg-green-900 dark:text-green-300">Ativo</span>
+            <span class="bg-blue-100 text-blue-800 text-sm font-medium me-2 px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300 capitalize">{{ g.user_profile.role }}</span>
+            <p class="text-sm font-normal text-gray-500 dark:text-gray-400 mt-3 break-all">{{ g.user_profile.email }}</p>
+        </div>
+        
+        <div class="p-6 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
+            <h6 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-2">Visão Geral</h6>
+            <p class="text-sm font-normal text-gray-500 dark:text-gray-400">Aqui iremos plugar as integrações do Whatsapp e RAG futuramente, focadas na jornada do estudante.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

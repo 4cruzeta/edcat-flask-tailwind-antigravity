@@ -1,0 +1,40 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment Variables
+.env
+.flaskenv
+
+# GCP / Firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+ui-debug.*.log
+.firebaserc_hidden
+
+# Node e Front-end (Caso instale o tailwind via npm acidentalmente no futuro)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# VS Code / IDEs
+.idea/
+*.swp
+*.swo
+
+# Project Configs 
+mcp.json

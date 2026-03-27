@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}EdCat V2 - Secure Login{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center px-4 py-8 mx-auto xl:mt-20">
+    <!-- Card Elevado (Estilo Glassmorphism light) -->
+    <div class="w-full bg-white rounded-2xl shadow-2xl dark:border sm:max-w-md xl:p-0 dark:bg-gray-800 dark:border-gray-700 overflow-hidden relative ring-1 ring-gray-900/5">
+        
+        <!-- Progress Bar Loading Animado no topo do bloco -->
+        <div id="loading" class="hidden absolute top-0 left-0 w-full h-1 bg-gray-200">
+            <div class="h-full bg-blue-600 animate-[pulse_1s_ease-in-out_infinite] w-2/3"></div>
+        </div>
+        
+        <div class="p-8 space-y-6">
+            <div class="text-center">
+                <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">
+                    Acesso Restrito
+                </h1>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Insira as suas credenciais para gerenciar a plataforma.</p>
+            </div>
+            
+            <form id="login-form" class="space-y-5" action="#">
+                
+                <!-- Alert Box do Flowbite modificado (Aparece se houver erro) -->
+                <div id="error-alert" class="hidden p-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400 border border-red-200 dark:border-red-900" role="alert">
+                    <span class="font-bold mr-1">Acesso Negado:</span>
+                    <span id="error-text">Verifique suas credenciais.</span>
+                </div>
+
+                <div>
+                    <label for="email" class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">Conta Corporativa</label>
+                    <input type="email" name="email" id="email" class="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 transition-all font-medium" placeholder="nome@agencia.com" required="">
+                </div>
+                <div>
+                    <label for="password" class="block mb-2 text-sm font-bold text-gray-900 dark:text-white">Palavra Passe</label>
+                    <input type="password" name="password" id="password" placeholder="••••••••" class="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 transition-all font-medium letter-spacing-widest" required="">
+                </div>
+                
+                <button type="submit" id="submit-btn" class="w-full text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-bold rounded-lg text-sm px-5 py-3.5 mt-2 text-center shadow-lg shadow-blue-500/40 transition-all flex justify-center items-center group">
+                    Efetuar Login Seguro
+                    <svg class="w-4 h-4 ml-2 rtl:rotate-180 transition-transform group-hover:translate-x-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9"/>
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+  // Resgata variáveis dinamicamente injetadas do Secret Manager pra blindar Git!
+  const firebaseConfig = {{ firebase_config|tojson|safe }};
+  const langCode = "{{ g.lang_code or 'pt_BR' }}";
+  const nextUrl = "{{ next_url or '/' }}";
+
+  // SDK Moderno do Firebase V9+ Modulares (Economia e Performance)
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  // Se o dev fallback (Dict vazio) for injetado, ele vai avisar porem vai dar erro natural.  
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  const form = document.getElementById('login-form');
+  const btn = document.getElementById('submit-btn');
+  const alertBox = document.getElementById('error-alert');
+  const alertText = document.getElementById('error-text');
+  const loading = document.getElementById('loading');
+
+  form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      
+      // Efeito Visual de Loading Seguro
+      btn.disabled = true;
+      btn.classList.add('opacity-70', 'cursor-not-allowed');
+      btn.innerHTML = `<svg aria-hidden="true" class="w-5 h-5 text-white animate-spin fill-blue-300 mr-2" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/><path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/></svg> Acessando as Defesas...`;
+      alertBox.classList.add('hidden');
+      loading.classList.remove('hidden');
+
+      try {
+          // Firebase Auth processando comunicação...
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          const user = userCredential.user;
+          const token = await user.getIdToken();
+
+          // Enviar JWT para o Python trocar pelo Cookie invulnerável
+          const res = await fetch(`/${langCode}/auth/session_login`, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ token: token })
+          });
+
+          const data = await res.json();
+          if (data.success) {
+               // Autenticado com sucesso. O Flask injetou o '__session' livre.
+               window.location.assign(nextUrl && nextUrl !== '/' ? nextUrl : `/${langCode}/dashboard`);
+          } else {
+              throw new Error(data.error);
+          }
+          
+      } catch (error) {
+          // Restaura UI
+          alertText.textContent = error.code === 'auth/invalid-credential' 
+              ? "O email fornecido ou senha são inválidos ou não tem permissão corporativa." 
+              : error.message;
+          alertBox.classList.remove('hidden');
+          btn.disabled = false;
+          btn.classList.remove('opacity-70', 'cursor-not-allowed');
+          btn.innerHTML = `
+                Efetuar Login Seguro
+                <svg class="w-4 h-4 ml-2 rtl:rotate-180 transition-transform group-hover:translate-x-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9"/>
+                </svg>`;
+          loading.classList.add('hidden');
+      }
+  });
+</script>
+{% endblock %}
