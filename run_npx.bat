@@ -1,0 +1,1 @@
+call npx @tailwindcss/cli -i ./edcat_root/static/css/input.css -o ./edcat_root/static/css/output.css --watch
