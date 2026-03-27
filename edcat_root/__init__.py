@@ -60,6 +60,18 @@ def create_app():
         print(f"[X] Avisoes Firestore falhou: {e}")
 
     # ==========================================
+    # Integração do Langchain / RAG Agent
+    # ==========================================
+    from .rag_agent.agent import RagAgent
+    
+    # Modo Lazy de carregamento: site sobrevive mesmo ser as chaves API da OpenAI derem pau.
+    app.rag_agent = RagAgent(safe_mode=True)
+    if app.rag_agent.agent:
+        print("[\u2713] RAG Agent IA engatilhada online")
+    else:
+        print(f"[!] Aviso: RAG Agent Offlline - {app.rag_agent.status_message}")
+        
+    # ==========================================
     # Babel Settings (i18n)
     # ==========================================
     app.config['LANGUAGES'] = {'pt_BR': 'Português', 'en_US': 'English'}
@@ -81,6 +93,7 @@ def create_app():
     with app.app_context():
         from .views import views
         from .auth import auth_bp
+        from .rag_agent.routes import rag_agent_bp
 
         @app.before_request
         def set_lang_code():
@@ -93,6 +106,7 @@ def create_app():
         # Monta os Blueprints principais sob o prefixo condicional de língua
         app.register_blueprint(views, url_prefix='/<lang_code>')
         app.register_blueprint(auth_bp, url_prefix='/<lang_code>/auth')
+        app.register_blueprint(rag_agent_bp, url_prefix='/<lang_code>')
 
         @app.context_processor
         def inject_lang_changer():
