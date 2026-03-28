@@ -94,6 +94,7 @@ def create_app():
         from .views import views
         from .auth import auth_bp
         from .rag_agent.routes import rag_agent_bp
+        from .whatsapp.routes import whatsapp_bp
 
         @app.before_request
         def set_lang_code():
@@ -107,6 +108,9 @@ def create_app():
         app.register_blueprint(views, url_prefix='/<lang_code>')
         app.register_blueprint(auth_bp, url_prefix='/<lang_code>/auth')
         app.register_blueprint(rag_agent_bp, url_prefix='/<lang_code>')
+        
+        # Webhook raiz estrito (Invisível à UI e Babel)
+        app.register_blueprint(whatsapp_bp)
 
         @app.context_processor
         def inject_lang_changer():
