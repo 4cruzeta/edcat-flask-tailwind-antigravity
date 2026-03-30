@@ -1,0 +1,24 @@
+.gcloudignore
+.git
+.gitignore
+
+# Ambiente Local
+.env
+
+# Diretórios de dependências (Serão reconstruídos no Stage 1)
+node_modules/
+.venv/
+.uv/
+
+# Build Tools & Caches
+__pycache__/
+*.pyc
+*.pyo
+
+# IDEs
+.idx/
+.idea/
+.vscode/
+
+# Project Configs 
+mcp.json

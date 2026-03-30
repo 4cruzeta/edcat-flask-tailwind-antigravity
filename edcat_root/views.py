@@ -189,3 +189,16 @@ def delete_user(lang_code, uid):
         print(f"Deleção falhou: {e}")
 
     return redirect(url_for('views.admin_home', lang_code=lang_code))
+
+# ==========================================
+# ENDPOINTS DE SAÚDE E WAKE-UP (SERVERLESS)
+# ==========================================
+
+@views.route("/api/ping", methods=['GET'])
+def api_ping(lang_code):
+    """
+    Rota ultra-leve focada exclusivamente em tirar a Instância do Cloud Run 
+    do estado inativo ('Cold Start'). Retorna um sinal de vida simples (200 OK)
+    sem onerar bancos do GCP ou a OAuth.
+    """
+    return jsonify({"status": "awake", "message": "Cloud Run Engine Ready"}), 200

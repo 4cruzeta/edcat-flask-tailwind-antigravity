@@ -109,8 +109,8 @@ def create_app():
         app.register_blueprint(auth_bp, url_prefix='/<lang_code>/auth')
         app.register_blueprint(rag_agent_bp, url_prefix='/<lang_code>')
         
-        # Webhook raiz estrito (Invisível à UI e Babel)
-        app.register_blueprint(whatsapp_bp)
+        # Webhook raiz estrito (Mas respeitando o prefixo histórico de configuração da Meta API)
+        app.register_blueprint(whatsapp_bp, url_prefix='/whatsapp')
 
         @app.context_processor
         def inject_lang_changer():

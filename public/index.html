@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to EdCat V2</title>
+    <!-- Tailwind V4 via CDN (Isolated from Python Backend for CDN deployment) -->
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+        @theme {
+            --color-primary-50: #eff6ff;
+            --color-primary-100: #dbeafe;
+            --color-primary-500: #3b82f6;
+            --color-primary-600: #2563eb;
+            --color-primary-700: #1d4ed8;
+        }
+        /* Custom delay rules for fade-in */
+        .delay-100 { animation-delay: 100ms; }
+        .delay-300 { animation-delay: 300ms; }
+    </style>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen relative overflow-hidden font-sans antialiased text-gray-900">
+    <!-- Abstract Background Pattern -->
+    <div class="absolute inset-0 w-full h-full bg-white opacity-40 mix-blend-multiply" style="background-image: radial-gradient(#2563eb 0.5px, transparent 0.5px), radial-gradient(#2563eb 0.5px, #ffffff 0.5px); background-size: 20px 20px; background-position: 0 0,10px 10px;"></div>
+
+    <main class="z-10 bg-white/80 backdrop-blur-md p-10 md:p-14 rounded-3xl shadow-2xl max-w-2xl w-full mx-4 border border-white/50 animate-fade-in transition-all">
+        <!-- Bilingual Welcome Section -->
+        <div class="space-y-8 text-center">
+            
+            <!-- Icon/Logo Placeholder -->
+            <div class="flex justify-center mb-6">
+                <div class="w-20 h-20 bg-primary-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary-500/30 transform transition-transform hover:scale-110">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- English Welcome -->
+            <div class="animate-fade-in delay-100">
+                <h1 class="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl mb-2">Welcome to our platform</h1>
+                <p class="text-base text-gray-500">Dive into the journey of knowledge. Our intelligent agents are ready to assist you.</p>
+            </div>
+            
+            <!-- Separator -->
+            <div class="flex items-center justify-center gap-4 opacity-50">
+                <span class="w-12 h-px bg-gray-300"></span>
+                <span class="text-xs font-semibold tracking-widest text-gray-400">✧</span>
+                <span class="w-12 h-px bg-gray-300"></span>
+            </div>
+
+            <!-- Portuguese Welcome -->
+            <div class="animate-fade-in delay-300">
+                <h1 class="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl mb-2">Bem-vindo à nossa plataforma</h1>
+                <p class="text-base text-gray-500">Mergulhe na jornada do conhecimento. Nossos agentes inteligentes estão prontos para ajudá-lo.</p>
+            </div>
+        </div>
+
+        <!-- System Action Area: Loading vs Continue -->
+        <div class="mt-12 flex flex-col items-center justify-center min-h-[5rem]">
+            
+            <!-- Spinner (Wait State) -->
+            <div id="loaderArea" class="flex flex-col items-center justify-center space-y-3 transition-opacity duration-500">
+                <svg class="animate-spin h-8 w-8 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <div class="flex flex-col items-center justify-center">
+                    <span class="text-sm font-semibold text-gray-700 tracking-wider">Aguarde...</span>
+                    <span class="text-xs text-gray-400 mt-0.5 tracking-wider uppercase">Wait...</span>
+                </div>
+            </div>
+
+            <!-- Magic Universal Continue Button (Hidden Initially) -->
+            <a href="/pt_BR/home" id="continueButton" class="hidden transform scale-95 opacity-0 inline-flex items-center justify-center px-8 py-3.5 border border-transparent text-base font-bold rounded-full text-white bg-primary-600 hover:bg-primary-700 md:text-lg focus:outline-none focus:ring-4 focus:ring-primary-300 transition-all duration-300 ease-out hover:scale-105 hover:shadow-lg">
+                Continue 
+                <svg class="ml-2 -mr-1 w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+            </a>
+
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loaderArea = document.getElementById('loaderArea');
+            const continueBtn = document.getElementById('continueButton');
+            
+            // Function to reveal the button with a smooth CSS transition
+            const revealButton = () => {
+                loaderArea.classList.add('opacity-0');
+                
+                setTimeout(() => {
+                    loaderArea.classList.add('hidden');
+                    continueBtn.classList.remove('hidden');
+                    
+                    // Trigger browser reflow to enable CSS transition
+                    void continueBtn.offsetWidth; 
+                    
+                    continueBtn.classList.remove('opacity-0', 'scale-95');
+                    continueBtn.classList.add('opacity-100', 'scale-100');
+                }, 400); // Wait for spinner to fade out
+            };
+
+            // Wake-Up Ping (Cold start masker)
+            // It calls the Cloud Run backend secretly. When the container boots, it returns 200 OK.
+            fetch('/pt_BR/api/ping')
+                .then(response => {
+                    if(response.ok) {
+                        console.log("Cloud Run is Awake!");
+                        revealButton();
+                    } else {
+                        // Even if there's a minor error (like 404 meaning app booted but /api/ping missing), 
+                        // it proves the server woke up. So we unlock anyway.
+                        console.log("Cloud Run replied with non-200, but is awake.");
+                        revealButton();
+                    }
+                })
+                .catch(error => {
+                    console.error("Wake-Up Ping failed or timed out:", error);
+                    // Network error or extreme cold start timeout (over 30s)
+                    // We must still reveal the button eventually, so the user isn't stuck forever.
+                    revealButton();
+                });
+                
+            // Ultimate fallback: Just in case the fetch indefinitely hangs, show the button after 8 seconds visually.
+            setTimeout(() => {
+                if(continueBtn.classList.contains('hidden')) {
+                    console.warn("Forcing UI unlock via Fallback Timeout.");
+                    revealButton();
+                }
+            }, 8000);
+        });
+    </script>
+</body>
+</html>
