@@ -45,11 +45,13 @@ O motor de comunicação da Meta/WhatsApp (Graph API V24) foi resgatado e lapida
 * **Caching de Secretos Anti-Gargalo**: O `services.py` agora não liga para a cloud para buscar chaves do WhatsApp a cada requisição enviada. Ele acessa uma memória Dictionary leve após a primeira consulta, polpando os servidores da Google e agilizando as respostas do Chatbot no Whatsapp.
 * **Corrigindo as Rotas Silenciosas**: A adequação da URL para honrar o Painel Desenvolvedor da Meta exigiu um roteamento cirúrgico em Blueprint global (`url_prefix='/whatsapp'`) em união estrita com o Invoker do Agente RAG.
 
-## 9. Arquitetura Serverless Híbrida: Vencendo o "Cold Start"
-No deploy oficial, projetou-se uma maravilha de UX Engineering conhecida como *Cold-Start Masking via CDN*:
-* **Corte da Raiz no Firebase**: Configurando o `firebase.json` isolamos a `Route /` do aplicativo pesado de Python (Cloud Run) para o CDN estático do Firebase (Edge Network).
-* **Welcome Page Híbrida (`public/index.html`)**: O usuário agora é recebido instantaneamente via HTML estático (com Tailwind 4 via tag cdn) apresentando design polido, Spinner nativo em múltiplas linguagens e a lógica magistral.
-* **O "Wake-Up Ping" Assíncrono**: Enquanto o aluno acha que a página está apenas "carregando a interface", o Javascript invisível executa um `fetch()` contra uma nova rota enxuta (`/pt_BR/api/ping`). Aquilo que eram irritantes \>5 segundos de tela em branco no carregamento pesado da nuvem Python tornou-se uma transição visual incrivelmente limpa, terminando na mágica aparição do botão `Continue >`.
+## 10. Manutenção e Fluxo de Trabalho (Workflow)
+Para garantir que a V2 continue evoluindo sem fricção em novos ciclos de desenvolvimento:
+* **Persistência de IA (ChromaDB)**: A base de conhecimento reside em `edcat_root/resources/chroma_db`. Estrategicamente, ela é ignorada pelo Git (para evitar binários pesados no histórico) mas incluída no `.gcloudignore`, garantindo que cada Deploy leve consigo a versão mais atualizada do conhecimento da IA embutida na imagem Docker.
+* **Comandos de Sobrevivência Local**:
+  - `uv run main.py`: Inicia o servidor Flask com hot-reload.
+  - `.\run_npx.bat`: Mantém o compilador Tailwind V4 vigiando mudanças no CSS/HTML.
+* **Gestão por Artefatos**: O sucesso desta migração deve-se ao uso estrito de *Planos de Implementação* e *Walkthroughs* documentados em tempo real, permitindo que a inteligência artificial de apoio (Antigravity) mantenha o contexto perfeito mesmo após resets de sessão.
 
 ---
 *Status Atual*: Em estado da Arte. O Deploy da V2 foi concretizado. O Google Cloud Run orquestra magistralmente o contêiner gerado sob as armaduras de Imagem Python com dependências cravadas no `.lock` do **uv** unidas lado-a-lado com a Edge CDN de hospedagem da Google. Missão de Integração RAG e Modernização UI Completa.

@@ -1,9 +1,13 @@
 import logging
+from collections import deque
 from flask import Blueprint, request, current_app
 
 from .services import get_whatsapp_credentials, send_whatsapp_message
 
 logging.basicConfig(level=logging.INFO)
+
+# Defesa Global contra Meta Retries (Evitando bot spam)
+_processed_messages = deque(maxlen=2000)
 
 # Blueprint modernizado sem views acopladas (é uma API estrita invisível)
 whatsapp_bp = Blueprint("whatsapp_bp", __name__)
@@ -49,8 +53,17 @@ def handle_webhook():
                 message_body = message_data.get("text", {}).get("body", "")
                 message_id = message_data.get("id")
                 
-                if not message_body:
+                if not message_body or not message_id:
                     return "OK", 200
+
+                # DEDUPLICAÇÃO DE MENSAGENS (DEFESA CONTRA META RETRIES)
+                # A Meta derruba a conexão se a IA demorar mais de 15s e envia o 
+                # MESMO payload de novo várias vezes achando que deu erro, 
+                # causando loops infinitos do bot.
+                if message_id in _processed_messages:
+                    logging.info(f"DUPLICATE BLOCKED - Webhook ignorando o retry do ID: {message_id}")
+                    return "OK", 200
+                _processed_messages.append(message_id)
 
                 logging.info(f'Received WhatsApp message from {sender_phone} (ID: {message_id}): "{message_body}"')
 
