@@ -5,9 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EdCat Calendar Agent (LangGraph)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         .chat-bubble-user { @apply bg-blue-600 text-white p-3 rounded-2xl rounded-tr-sm w-fit max-w-[80%] self-end shadow-sm; }
         .chat-bubble-agent { @apply bg-gray-100 text-gray-800 p-3 rounded-2xl rounded-tl-sm w-fit max-w-[80%] self-start shadow-sm whitespace-pre-wrap; }
+        /* Markdown Table Styling */
+        .chat-bubble-agent table { border-collapse: collapse; width: 100%; margin-top: 8px; margin-bottom: 8px; font-size: 0.875rem; }
+        .chat-bubble-agent th { background-color: #e5e7eb; padding: 6px 12px; text-align: left; font-weight: 600; border: 1px solid #d1d5db; }
+        .chat-bubble-agent td { padding: 6px 12px; border: 1px solid #d1d5db; }
+        
         .typing { display: none; }
         .typing span { animation: blink 1.4s infinite both; height: 6px; width: 6px; background: #6b7280; border-radius: 50%; display: inline-block; margin: 0 1px; }
         .typing span:nth-child(2) { animation-delay: 0.2s; }
@@ -65,7 +71,13 @@
         const addMessage = (text, isUser) => {
             const div = document.createElement('div');
             div.className = isUser ? 'chat-bubble-user' : 'chat-bubble-agent';
-            div.textContent = text;
+            if (isUser) {
+                div.textContent = text;
+            } else {
+                // Remove formatting constraints that cause markdown block glitches
+                let cleanText = text.replace(/```markdown/g, '').replace(/```/g, '');
+                div.innerHTML = marked.parse(cleanText, { breaks: true });
+            }
             chatMessages.appendChild(div);
             container.scrollTop = container.scrollHeight;
         };

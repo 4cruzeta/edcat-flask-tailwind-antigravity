@@ -10,7 +10,8 @@ from google.api_core import exceptions
 from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain.chat_models import init_chat_model
-from langchain_core.messages import AIMessage # <-- STRATEGIC ADDITION
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.tracers import LangChainTracer
 
 # LangChain integrations
 from langchain_openai import OpenAIEmbeddings
@@ -108,10 +109,9 @@ class RagAgent:
         project_id = os.environ.get('GOOGLE_CLOUD_PROJECT', 'edcat-site')
         secrets_to_load = ["OPENAI_API_KEY", "LANGSMITH_API_KEY"]
         results = [get_secret(project_id, secret) for secret in secrets_to_load]
-        os.environ["LANGCHAIN_TRACING_V2"] = "true"
-        os.environ["LANGSMITH_PROJECT"] = "rag-v6"
-        os.environ["LANGSMITH_TRACING"] = "true"
+        # Configurando tracing explicitamente no próprio agente para separar do RAG
         os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
+        os.environ["LANGSMITH_TRACING"] = "true"
         return all(results)
 
     def invoke(self, input_data: dict) -> str:
@@ -136,7 +136,13 @@ class RagAgent:
             # We iterate through the stream and only keep the content of the *last* AI Message.
             # This ensures we don't return intermediate steps like tool calls, only the final answer.
             final_response = ""
-            for event in self.agent.stream(input_payload, stream_mode="values"):
+            # Isolando o trace no projeto específico via Callback Tracer
+            tracer = LangChainTracer(project_name="rag_agent-v7.0")
+            for event in self.agent.stream(
+                input_payload, 
+                stream_mode="values", 
+                config={"callbacks": [tracer]}
+            ):
                 last_message = event["messages"][-1]
                 # Check if the newest message in the stream is from the AI.
                 if isinstance(last_message, AIMessage):

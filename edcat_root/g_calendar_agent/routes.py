@@ -40,26 +40,8 @@ def calendar_ask(lang_code=None):
         # Mensagem inicial do usuário no formato esperado pelo StateGraph
         inputs = {"messages": [HumanMessage(content=user_message)]}
 
-        # Invoca o Grafo Síncronamente
-        # Isso rodará o llm node, chamará as ferramentas via tool node se necessário, e continuará o loop
-        result = calendar_graph_agent.invoke(inputs)
-
-        # A última mensagem no dicionário 'messages' é a resposta textual final do LLM
-        final_message = result['messages'][-1].content
-        
-        # O Gemini frequentemente retorna 'content' como uma lista de dicionários quando há mix de texto e actions
-        if isinstance(final_message, list):
-            text_parts = [
-                part["text"] if isinstance(part, dict) and "text" in part else str(part)
-                for part in final_message
-            ]
-            final_message = " ".join(text_parts)
-        
-        if not final_message or str(final_message).strip() == "":
-            final_message = "Ação concluída com sucesso (O agente não retornou texto)."
-
-        # Garante que seja sempre uma string
-        final_message = str(final_message)
+        # A invocação agora retorna diretamente o texto final higienizado
+        final_message = calendar_graph_agent.invoke(inputs)
 
         return jsonify({"response": final_message, "status": "success"})
 

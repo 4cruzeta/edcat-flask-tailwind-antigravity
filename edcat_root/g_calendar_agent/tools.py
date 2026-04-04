@@ -4,81 +4,72 @@ from pydantic import BaseModel, Field
 
 from . import services
 
-# Opcional: Modelos Pydantic para os argumentos podem garantir que o Gemini envie o formato correto
-class ParseDatetimeArgs(BaseModel):
-    datetime_string: str = Field(..., description="String em linguagem natural (ex: 'próxima sexta às 15h').")
-    duration: Optional[str] = Field(None, description="Duração opcional do evento (ex: '1 hour', 'para 30 minutos').")
-    time_preference: Optional[str] = Field(None, description="Preferência de tempo (ex: 'morning').")
+# 1. Ferramenta de Consulta de Slots
+class GetSlotsArgs(BaseModel):
+    days_ahead: int = Field(6, description="Quantidade de dias úteis projetados para frente.")
 
-@tool(args_schema=ParseDatetimeArgs)
-def parse_natural_language_datetime_tool(datetime_string: str, duration: Optional[str] = None, time_preference: Optional[str] = None) -> str:
-    """Interpreta data e hora em linguagem natural para o formato UTC exigido pela API do calendário."""
+@tool(args_schema=GetSlotsArgs)
+def get_available_booking_slots_tool(days_ahead: int = 6) -> str:
+    """Busca os horários e dias disponíveis na agenda do consultório para mostrar ao cliente.
+    Retorna uma Tabela em formato Markdown. Exiba esta tabela para o cliente exatamente como ela for retornada.
+    NÃO ALTERE O NOME DOS HORÁRIOS RETORNADOS, ELES SÃO ESTRITAMENTE NECESSÁRIOS PARA A FERRAMENTA DE BOOKING ("8h-manhã").
+    """
     try:
-        start_iso, end_iso, _ = services.parse_natural_language_datetime(datetime_string, duration, time_preference)
-        return f"Start: {start_iso}, End: {end_iso}"
+        grid = services.get_available_booking_slots(days_ahead)
+        if "error" in grid:
+            return grid["error"]
+
+        # Formatação pesada da Tabela Markdown solicitada pelo usuário
+        days = list(grid.keys())
+        matrix_output = []
+        
+        # Agrupar colunas 3 a 3 para ficar responsivo
+        for chunk_idx in range(0, len(days), 3):
+            column_names = days[chunk_idx:chunk_idx+3]
+            matrix_output.append("|" + "|".join(column_names) + "|")
+            matrix_output.append("|" + "|".join(["-" * len(c) for c in column_names]) + "|")
+            
+            # Precisamos achar o tamanho máximo de linhas de um dia nesta grade
+            max_slots = max([len(grid[d]) for d in column_names]) if column_names else 0
+            
+            for i in range(max_slots):
+                row = []
+                for d in column_names:
+                    if i < len(grid[d]):
+                        iso_val = grid[d][i]["iso"]
+                        human_val = grid[d][i]["human"]
+                        # Embutindo o valor ISO em um comentário HTML invisível ao lado do número
+                        # Assim o agente pode extrair com Regex ou ler, sem sujar a tela do user
+                        row.append(f"{human_val} <!--{iso_val}-->")
+                    else:
+                        row.append(" ")
+                matrix_output.append("|" + "|".join(row) + "|")
+            
+            matrix_output.append("\n") # Separa blocos
+
+        return "\n".join(matrix_output)
+
     except Exception as e:
-        return f"Erro no parse: {str(e)}"
+        return f"Erro na formatação da grade: {str(e)}"
 
-class CreateEventArgs(BaseModel):
-    summary: str = Field(..., description="Título do evento.")
-    start_datetime: str = Field(..., description="Data e hora de início em formato ISO UTC (use parse_natural_language_datetime_tool primeiro).")
-    end_datetime: str = Field(..., description="Data e hora de término em formato ISO UTC.")
-    location: Optional[str] = Field("", description="Local do evento.")
-    description: Optional[str] = Field("", description="Descrição das atividades do evento.")
-    recurrence: Optional[str] = Field(None, description="String RRULE para eventos que se repetem.")
-    attendees: Optional[List[Dict[str, str]]] = Field(None, description="Lista de emails dos participantes, ex: [{'email': 'a@b.com'}].")
+# 2. Ferramenta de Confirmação (Booking Final)
+class BookingArgs(BaseModel):
+    name: str = Field(..., description="O nome completo do cliente coletado no chat.")
+    phone: str = Field(..., description="O número de telefone fornecido pelo cliente.")
+    reason: str = Field(..., description="O motivo principal do atendimento (ex: dor de dente, limpeza).")
+    slot_iso: str = Field(..., description="O valor de Data/Hora no formato ISO 8601 UTC. Esse valor estava escondido dentro da tag <!-- --> na tabela ao lado do horário escolhido.")
 
-@tool(args_schema=CreateEventArgs)
-def create_event_tool(summary: str, start_datetime: str, end_datetime: str, location: str = "", description: str = "", recurrence: Optional[str] = None, attendees: Optional[List[Dict[str, str]]] = None) -> str:
-    """Ferramenta para criar um NOVO evento no Google Calendar do usuário."""
+@tool(args_schema=BookingArgs)
+def confirm_booking_tool(name: str, phone: str, reason: str, slot_iso: str) -> str:
+    """Ferramenta que Efetiva a reserva no sistema. Só chame ela APÓS coletar Nome, Telefone e Motivo, e APÓS o cliente escolher um dos horários da tabela.
+    Passar os dados extamente como solicitados."""
     try:
-        return services.create_event(summary, start_datetime, end_datetime, location, description, recurrence, attendees)
+        return services.confirm_booking(name, phone, reason, slot_iso)
     except Exception as e:
-        return f"Erro ao criar evento: {str(e)}"
+        return f"Falha crítica no agendamento. Diga ao cliente: {str(e)}"
 
-class SearchEventArgs(BaseModel):
-    query: Optional[str] = Field(None, description="Palavras-chave para buscar um evento específico.")
-    time_min: Optional[str] = Field(None, description="Limite inferior de tempo (ISO 8601 UTC).")
-    time_max: Optional[str] = Field(None, description="Limite superior de tempo (ISO 8601 UTC).")
-    max_results: Optional[int] = Field(10, description="Número máximo de resultados.")
-
-@tool(args_schema=SearchEventArgs)
-def search_events_tool(query: Optional[str] = None, time_min: Optional[str] = None, time_max: Optional[str] = None, max_results: int = 10) -> str:
-    """Usa esta ferramenta para buscar eventos existentes, seja por palavra-chave ou período. IMPORTANTE: Use para descobrir o ID do evento."""
-    try:
-        results = services.search_events(query, time_min, time_max, max_results)
-        return "\n".join(results)
-    except Exception as e:
-        return f"Erro na busca: {str(e)}"
-
-class ListEventArgs(BaseModel):
-    max_results: Optional[int] = Field(10, description="Número máximo de eventos a serem retornados.")
-
-@tool(args_schema=ListEventArgs)
-def list_events_tool(max_results: int = 10) -> str:
-    """Lista até max_results dos próximos eventos agendados, a partir deste exato momento."""
-    try:
-        results = services.list_events(max_results)
-        return "\n".join(results)
-    except Exception as e:
-        return f"Erro ao listar eventos: {str(e)}"
-
-class DeleteEventArgs(BaseModel):
-    event_id: str = Field(..., description="O identificador (ID) único do evento que deve ser apagado. Obtenha isso usando a ferramenta search_events_tool.")
-
-@tool(args_schema=DeleteEventArgs)
-def delete_event_tool(event_id: str) -> str:
-    """Remove um evento da agenda. Exige o Event ID."""
-    try:
-        return services.delete_event(event_id)
-    except Exception as e:
-        return f"Erro ao deletar evento: {str(e)}"
-
-# A lista consolidada que passaremos para o LLM
+# Tools Consolidadas (Substituindo o arsenal genérico por um focado)
 CALENDAR_TOOLS = [
-    parse_natural_language_datetime_tool,
-    create_event_tool,
-    search_events_tool,
-    list_events_tool,
-    delete_event_tool
+    get_available_booking_slots_tool,
+    confirm_booking_tool
 ]
