@@ -16,14 +16,28 @@
             <p class="text-sm font-normal text-gray-500 dark:text-gray-400 mt-3 break-all">{{ g.user_profile.email }}</p>
         </div>
         
-        <div class="p-6 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
+        <div class="p-6 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600 flex flex-col">
             <h6 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-2">Acesso ao Conhecimento V2</h6>
-            <p class="text-sm font-normal text-gray-500 dark:text-gray-400 mb-4">Interaja com a base de dados sincronística da jornada do estudante diretamente via Chat Inteligente.</p>
+            <p class="text-sm font-normal text-gray-500 dark:text-gray-400 mb-4 flex-grow">Interaja com a base de dados sincronística da jornada do estudante diretamente via Chat Inteligente.</p>
             <a href="{{ url_for('rag_agent_bp.render_chat', lang_code=g.lang_code) }}" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:ring-4 focus:outline-none focus:ring-indigo-300 dark:bg-indigo-500 dark:hover:bg-indigo-600 dark:focus:ring-indigo-800 shadow-md transition-all group">
                 <svg class="w-5 h-5 mr-2 -ml-1 text-indigo-100 group-hover:animate-pulse" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                   <path fill-rule="evenodd" d="M12 2c-.791 0-1.55.314-2.11.874l-.893.893a.985.985 0 0 1-.696.288H7.04A2.984 2.984 0 0 0 4.055 7.04v1.262a.986.986 0 0 1-.288.696l-.893.893a2.984 2.984 0 0 0 0 4.22l.893.893a.985.985 0 0 1 .288.696v1.262a2.984 2.984 0 0 0 2.984 2.984h1.262c.261 0 .512.104.696.288l.893.893a2.984 2.984 0 0 0 4.22 0l.893-.893a.985.985 0 0 1 .696-.288h1.262a2.984 2.984 0 0 0 2.984-2.984V15.7c0-.261.104-.512.288-.696l.893-.893a2.984 2.984 0 0 0 0-4.22l-.893-.893a.985.985 0 0 1-.288-.696V7.04a2.984 2.984 0 0 0-2.984-2.984h-1.262a.985.985 0 0 1-.696-.288l-.893-.893A2.984 2.984 0 0 0 12 2Zm3.683 7.73a1 1 0 1 0-1.414-1.413l-4.253 4.253-1.277-1.277a1 1 0 0 0-1.415 1.414l1.985 1.984a1 1 0 0 0 1.414 0l4.96-4.96Z" clip-rule="evenodd"/>
                 </svg>
-                Conversar com IA (gpt-5-mini)
+                Agente RAG (Dicionário)
+                <svg class="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9"/>
+                </svg>
+            </a>
+        </div>
+
+        <div class="p-6 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600 flex flex-col">
+            <h6 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-2">Agendamento Inteligente</h6>
+            <p class="text-sm font-normal text-gray-500 dark:text-gray-400 mb-4 flex-grow">Gerencie sua agenda de consultas e compromissos diretamente com o assistente do Google Calendar.</p>
+            <a href="{{ url_for('g_calendar_agent.calendar_agent_page', lang_code=g.lang_code) }}" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 focus:ring-4 focus:outline-none focus:ring-emerald-300 dark:bg-emerald-500 dark:hover:bg-emerald-600 dark:focus:ring-emerald-800 shadow-md transition-all group">
+                <svg class="w-5 h-5 mr-2 -ml-1 text-emerald-100 group-hover:animate-pulse" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                  <path fill-rule="evenodd" d="M6 5V4a1 1 0 1 1 2 0v1h8V4a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H3V7a2 2 0 0 1 2-2h1ZM3 11v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7H3Zm8 2h2a1 1 0 1 1 0 2h-2a1 1 0 1 1 0-2Zm-4 0h2a1 1 0 1 1 0 2H7a1 1 0 1 1 0-2Zm8 0h2a1 1 0 1 1 0 2h-2a1 1 0 1 1 0-2Zm-4 4h2a1 1 0 1 1 0 2h-2a1 1 0 1 1 0-2Zm-4 0h2a1 1 0 1 1 0 2H7a1 1 0 1 1 0-2Zm8 0h2a1 1 0 1 1 0 2h-2a1 1 0 1 1 0-2Z" clip-rule="evenodd"/>
+                </svg>
+                Agente de Agendamento
                 <svg class="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9"/>
                 </svg>

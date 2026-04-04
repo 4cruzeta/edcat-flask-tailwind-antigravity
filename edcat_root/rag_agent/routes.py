@@ -9,7 +9,7 @@ rag_agent_bp = Blueprint("rag_agent_bp", __name__)
 def render_chat(lang_code):
     """Renderiza a página visual (Frontend) do Agente."""
     return render_template("chat_agent.html")
-''
+
 @rag_agent_bp.route("/api/chat", methods=["POST"])
 @login_required
 @load_user_profile
