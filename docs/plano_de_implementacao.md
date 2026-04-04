@@ -49,3 +49,55 @@ Procedimentos rigorosos para evitar o "Deploy Fantasma".
 - [ ] Definir um Dockerfile enxuto de estágio duplo (Multi-stage build) rodando Gunicorn + ProxyFix.
 - [ ] Setup do `service.yaml` com todas as variáveis obrigatórias documentadas.
 - [ ] Scripts de automação `devserver.sh` consolidados para o desenvolvedor local se orientar.
+
+# 📅 Plano Final: Agente de Agendamento - Consultório Dental (MVP)
+
+Este plano detalha a implementação final do agente de agendamento, focado na coleta de dados do cliente e no cumprimento fiel da grade de horários do consultório.
+
+## 1. Regras de Negócio Inegociáveis
+
+> [!IMPORTANT]
+> **Grade de Horários Semanal**:
+> - **Segunda, Terça, Quinta, Sexta**: 08h-11h (Manhã) e 14h-17h (Tarde).
+> - **Quarta**: **FECHADO** (Não mostrar na tabela).
+> - **Sábado**: 08h-11h (**Apenas Manhã**).
+> - **Domingo**: **FECHADO**.
+
+> [!IMPORTANT]
+> **Bloqueios de Data (Blackout)**:
+> - O sistema permitirá uma lista de datas específicas (ex: `2026-04-17`) que serão removidas da disponibilidade, independente do dia da semana.
+
+> [!IMPORTANT]
+> **Fluxo Conversacional**:
+> 1. Perguntar o **Nome**.
+> 2. Perguntar o **Telefone**.
+> 3. Perguntar o **Motivo** (ex: "estou com dor de dente").
+> 4. Apresentar Tabela de Disponibilidade (UX `3h - tarde`).
+> 5. Confirmar e Criar Evento.
+
+## 2. Implementação Técnica
+
+### A. Serviços (`services.py`)
+- **Configuração de Agenda**: 
+    - Objeto `WORKING_HOURS` mapeando dias da semana (0-6).
+    - Lista `EXCLUDED_DATES` para bloqueios manuais.
+- **Formatação de Título**: 
+    - O evento no Google Calendar será criado como: `{NOME} - {TELEFONE} - {MOTIVO}`.
+
+### B. Agente e Ferramentas (`agent.py` & `tools.py`)
+- **System Prompt**: Definir o "tom de voz" de um recepcionista profissional. Instruir para coletar as 3 informações antes de sugerir horários.
+- **Ferramentas**:
+    - `get_available_slots_tool`: Retorna a tabela Markdown dos próximos 6 dias úteis seguindo a grade.
+    - `confirm_booking_tool(name, phone, reason, slot_iso)`: Faz a inserção final.
+
+### C. Observabilidade
+- Tracing completo no **LangSmith** para validar se o agente está coletando os dados corretamente e convertendo os horários amigáveis para ISO.
+
+## 3. Questões Resolvidas
+- **Cancelamento**: Não implementado nesta fase (MVP).
+- **Cadastro**: Será feito via perguntas diretas pelo agente de calendário (futuramente integrado a um banco de dados).
+
+## 4. Plano de Verificação
+- **Teste de Grade**: Verificar se Quarta-feira e Domingo sumiram da tabela.
+- **Teste de Sábado**: Verificar se no Sábado apenas as opções de "manhã" aparecem.
+- **Teste de Criação**: Validar se o título do evento no Calendar contém todas as informações coletadas.

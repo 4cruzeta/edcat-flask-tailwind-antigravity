@@ -53,5 +53,11 @@ Para garantir que a V2 continue evoluindo sem fricção em novos ciclos de desen
   - `.\run_npx.bat`: Mantém o compilador Tailwind V4 vigiando mudanças no CSS/HTML.
 * **Gestão por Artefatos**: O sucesso desta migração deve-se ao uso estrito de *Planos de Implementação* e *Walkthroughs* documentados em tempo real, permitindo que a inteligência artificial de apoio (Antigravity) mantenha o contexto perfeito mesmo após resets de sessão.
 
+## 11. Resiliência de Webhook: O Problema do Timeout da Meta
+Durante a fase final, resolvemos um "bug" sistêmico crítico causado pela latência da IA:
+* **Gatilho**: A Meta interrompe a conexão HTTP caso uma resposta do webhook demore mais de 15 segundos. Como o Agente RAG/OpenAI pode levar ~18s, a Meta interpretava como falha e disparava **retries automáticos** infinitos.
+* **Sintoma**: O bot respondia várias vezes à mesma pergunta do usuário.
+* **Solução (Deduplicação)**: Implementamos um filtro de mensagens no `routes.py` usando um `deque` (LRU cache) para rastrear `message_id`s processados. Se um ID repetido chega em menos de 15s (retry), o sistema devolve imediatamente um HTTP 200 "OK" sem evocar a IA de novo, quebrando o loop de spam.
+
 ---
-*Status Atual*: Em estado da Arte. O Deploy da V2 foi concretizado. O Google Cloud Run orquestra magistralmente o contêiner gerado sob as armaduras de Imagem Python com dependências cravadas no `.lock` do **uv** unidas lado-a-lado com a Edge CDN de hospedagem da Google. Missão de Integração RAG e Modernização UI Completa.
+*Status Atual*: Versão 2.1 Finalizada e Blindada. O ecossistema EdCat agora conta com proteção contra retries de rede, deduplicação de mensagens e uma arquitetura híbrida Cloud Run + Firebase Hosting. Pronto para escala real.
