@@ -1,6 +1,7 @@
 import logging
 import os
 from flask import Blueprint, render_template, request, jsonify, g
+from edcat_root.auth import login_required, load_user_profile
 from langchain_core.messages import HumanMessage
 from .agent import calendar_graph_agent
 
@@ -15,16 +16,19 @@ g_calendar_agent_bp = Blueprint(
     static_folder='static'
 )
 
-@g_calendar_agent_bp.route('/calendar/test', methods=['GET'])
-def calendar_test(lang_code=None):
-    """Renderiza o dashboard de testes do agente de calendário."""
-    # O idioma vem do contexto da request, se customizado no Babel (no app Flask principal)
-    lang_code = g.get('lang_code', 'pt_BR')
-    return render_template('calendar_test.html', lang_code=lang_code)
+@g_calendar_agent_bp.route('/calendar_agent', methods=['GET'])
+@login_required
+@load_user_profile
+def calendar_agent_page(lang_code):
+    """Renderiza a página principal do agente de agendamento."""
+    # O idioma vem do contexto da request/prefixo da blueprint
+    return render_template('calendar_agent.html', lang_code=lang_code)
 
-@g_calendar_agent_bp.route('/calendar/ask', methods=['POST'])
-def calendar_ask(lang_code=None):
-    """Endpoint de chat síncrono para o agente de calendário (LangGraph)."""
+@g_calendar_agent_bp.route('/calendar_agent/ask', methods=['POST'])
+@login_required
+@load_user_profile
+def calendar_ask(lang_code):
+    """Endpoint de chat síncrono para o agente de agendamento."""
     try:
         if "GOOGLE_API_KEY" not in os.environ:
             return jsonify({'response': 'Atenção desenvolvedor: GOOGLE_API_KEY ausente no .env!', 'status': 'error'}), 500

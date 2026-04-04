@@ -3,13 +3,13 @@ from edcat_root.auth import login_required, load_user_profile
 
 rag_agent_bp = Blueprint("rag_agent_bp", __name__)
 
-@rag_agent_bp.route("/agente_ia", methods=["GET"])
+@rag_agent_bp.route("/rag_agent", methods=["GET"])
 @login_required
 @load_user_profile
 def render_chat(lang_code):
     """Renderiza a página visual (Frontend) do Agente."""
     return render_template("chat_agent.html")
-
+''
 @rag_agent_bp.route("/api/chat", methods=["POST"])
 @login_required
 @load_user_profile
