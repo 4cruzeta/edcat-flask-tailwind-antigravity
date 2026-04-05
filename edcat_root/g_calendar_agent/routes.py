@@ -30,9 +30,6 @@ def calendar_agent_page(lang_code):
 def calendar_ask(lang_code):
     """Endpoint de chat síncrono para o agente de agendamento."""
     try:
-        if "GOOGLE_API_KEY" not in os.environ:
-            return jsonify({'response': 'Atenção desenvolvedor: GOOGLE_API_KEY ausente no .env!', 'status': 'error'}), 500
-
         data = request.json
         user_message = data.get('message', '') if data else ""
         
@@ -45,6 +42,7 @@ def calendar_ask(lang_code):
         inputs = {"messages": [HumanMessage(content=user_message)]}
 
         # A invocação agora retorna diretamente o texto final higienizado
+        # Se houver erro de configuração (ex: falta de segredos), o Agente retorna o erro controlado.
         final_message = calendar_graph_agent.invoke(inputs)
 
         return jsonify({"response": final_message, "status": "success"})

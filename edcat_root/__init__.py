@@ -15,7 +15,7 @@ def create_app():
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
     
     # Placeholder para a Chave Secreta base (agora puxada do Secret Manager!)
-    from .utils import get_secret
+    from .utils.get_google_secrets import get_secret
     import json
     import firebase_admin
     from firebase_admin import credentials

@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project Specific
+.env
+.git/
+.firebase/
+.gcloudignore
+Dockerfile
+**/resources/chroma_db/ # Included in gcloudignore but excluded from general docker if we want strict control
+# Note: In our project, we WANT chroma_db in the image, so we might NOT ignore it here 
+# if the Dockerfile COPY command needs it. The current Dockerfile copies edcat_root/.
+
+# Production artifacts
+edcat_root/static/css/input.css # We only need output.css in the final stage

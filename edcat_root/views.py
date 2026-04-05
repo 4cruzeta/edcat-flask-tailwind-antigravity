@@ -11,7 +11,7 @@ def home(lang_code):
     return render_template("index.html")
 
 import json
-from .utils import get_secret
+from edcat_root.utils.get_google_secrets import get_secret
 from flask import current_app, jsonify
 
 @views.route('/login', methods=['GET'])

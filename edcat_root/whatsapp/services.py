@@ -2,7 +2,7 @@ import os
 import requests
 import logging
 
-from edcat_root.utils import get_secret
+from edcat_root.utils.get_google_secrets import get_secret
 
 # A simple in-memory cache to avoid fetching the same secret multiple times
 # within the same application instance lifecycle.

@@ -9,8 +9,11 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 from tzlocal import get_localzone
+
+# Project utilities
+from edcat_root.utils.get_google_secrets import get_secret
+from edcat_root.utils.helpers import parse_iso_datetime
 
 # Configurações globais
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
@@ -37,39 +40,15 @@ WORKING_HOURS = {
     6: []                      # Domingo (Fechado)
 }
 
-# Tradução do número da hora para a string humanizada (UX Rule)
-HUMAN_SLOT_MAP = {
-    8: "8h-manhã",
-    9: "9h-manhã",
-    10: "10h-manhã",
-    14: "2h-tarde",
-    15: "3h-tarde",
-    16: "4h-tarde"
-}
-
 import json
 from google.cloud import secretmanager
 
 # ... Keep other imports intact
 
-def get_secret(project_id, secret_id, version_id="latest") -> str:
-    """Extrai um segredo do Google Secret Manager."""
-    try:
-        client = secretmanager.SecretManagerServiceClient()
-        name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
-        response = client.access_secret_version(request={"name": name})
-        secret_value = response.payload.data.decode("UTF-8").strip()
-        return secret_value
-    except Exception as e:
-        logging.error(f"Failed to retrieve secret '{secret_id}': {e}")
-        return None
-
 def get_calendar_service():
     """Autenticação OAuth 2.0 (Stateless) usando Google Secret Manager."""
-    project_id = os.environ.get('GOOGLE_CLOUD_PROJECT', 'edcat-site')
-    
     # Busca da nuvem (Sem carregar do disco)
-    token_str = get_secret(project_id, "GOOGLE_CALENDAR_TOKEN")
+    token_str = get_secret("GOOGLE_CALENDAR_TOKEN")
     
     if not token_str:
         raise Exception("Token OAuth (GOOGLE_CALENDAR_TOKEN) Inexistente na Nuvem.")
@@ -135,7 +114,7 @@ def get_available_booking_slots(days_ahead=6) -> Dict:
                 
                 theoretical_slots[dt_iso] = {
                     "day_label": current_date.strftime('%A-%d').replace('Monday', 'segunda').replace('Tuesday', 'terça').replace('Thursday', 'quinta').replace('Friday', 'sexta').replace('Saturday', 'sábado'),
-                    "human_hour": HUMAN_SLOT_MAP.get(hour, f"{hour}h"),
+                    "hour": hour,
                     "dt_obj": dt
                 }
                 
@@ -165,8 +144,8 @@ def get_available_booking_slots(days_ahead=6) -> Dict:
             is_busy = False
             
             for busy in busy_periods:
-                b_start = datetime.datetime.fromisoformat(busy['start'].replace('Z', '+00:00'))
-                b_end = datetime.datetime.fromisoformat(busy['end'].replace('Z', '+00:00'))
+                b_start = parse_iso_datetime(busy['start'])
+                b_end = parse_iso_datetime(busy['end'])
                 # Lógica de intersecção básica de tempo
                 if max(slot_start, b_start) < min(slot_end, b_end):
                     is_busy = True
@@ -176,7 +155,7 @@ def get_available_booking_slots(days_ahead=6) -> Dict:
                 label = meta['day_label']
                 if label not in available_grid:
                     available_grid[label] = []
-                available_grid[label].append({"iso": slot_iso, "human": meta['human_hour']})
+                available_grid[label].append({"iso": slot_iso, "hour": meta['hour']})
                 
         return available_grid
 
@@ -188,7 +167,7 @@ def confirm_booking(name: str, phone: str, reason: str, slot_iso: str):
     service = get_calendar_service()
     
     # 1 hr de duração fixa
-    start_dt = datetime.datetime.fromisoformat(slot_iso.replace('Z', '+00:00'))
+    start_dt = parse_iso_datetime(slot_iso)
     end_dt = start_dt + datetime.timedelta(hours=1)
     
     # O Padrão de Nomenclatura Estrita do Consultório

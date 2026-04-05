@@ -6,36 +6,24 @@ import logging
 from google.cloud import secretmanager
 from google.api_core import exceptions
 
+# Project utilities
+from edcat_root.utils.get_google_secrets import get_secret
+
 # LangChain core components
 from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain.chat_models import init_chat_model
+from langchain.embeddings import init_embeddings
 from langchain_core.messages import AIMessage, HumanMessage
-from langchain_core.tracers import LangChainTracer
+import langsmith as ls
 
 # LangChain integrations
-from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
 
 # --- Custom Exception for Initialization Errors ---
 class RagAgentInitializationError(Exception):
     """Custom exception for errors during RagAgent initialization. Now handled silently by default."""
     pass
-
-# --- Utility Functions ---
-def get_secret(project_id, secret_id, version_id="latest"):
-    """Retrieves a secret from Google Secret Manager and sets it as an env var."""
-    try:
-        client = secretmanager.SecretManagerServiceClient()
-        name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
-        response = client.access_secret_version(request={"name": name})
-        secret_value = response.payload.data.decode("UTF-8").strip()
-        os.environ[secret_id] = secret_value
-        logging.info(f"Successfully retrieved and set env var for '{secret_id}'.")
-        return True
-    except Exception as e:
-        logging.error(f"--- FAILED to retrieve secret '{secret_id}': {e} ---")
-        return False
 
 # --- The RAG Agent Class ---
 class RagAgent:
@@ -63,7 +51,7 @@ class RagAgent:
             if not os.path.isdir(CHROMA_PATH):
                 raise RagAgentInitializationError(f"ChromaDB directory not found: {CHROMA_PATH}")
 
-            embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+            embeddings = init_embeddings("openai:text-embedding-3-large")
             self.vector_store = Chroma(
                 collection_name="Jung_Individuacao",
                 embedding_function=embeddings,
@@ -89,7 +77,7 @@ class RagAgent:
             )
 
         try:
-            model = init_chat_model("gpt-5-mini", model_provider="openai")
+            model = init_chat_model("gpt-5-mini", model_provider="openai", output_version="v1")
             tools = [search_handbook]
             system_prompt = ("Seu papel único é pesquisar OBRIGATORIAMENTE na base de dados Chroma (usando a ferramenta) para responder à pergunta do usuário.\n"
                              "Se a ferramenta não retornar informações suficientes ou úteis, responda exatamente com: 'Cruzeta, o meu MESTRE, ordenou que eu não responda nada que não seja relacionado ao assunto determinado por ele.'\n"
@@ -106,13 +94,22 @@ class RagAgent:
 
     def _load_secrets(self) -> bool:
         """Loads all necessary API keys."""
-        project_id = os.environ.get('GOOGLE_CLOUD_PROJECT', 'edcat-site')
         secrets_to_load = ["OPENAI_API_KEY", "LANGSMITH_API_KEY"]
-        results = [get_secret(project_id, secret) for secret in secrets_to_load]
-        # Configurando tracing explicitamente no próprio agente para separar do RAG
+        
+        # O central get_secret já retorna o valor, mas não seta o env de forma mágica.
+        # Precisamos manter a injeção no os.environ.
+        all_loaded = True
+        for secret in secrets_to_load:
+            val = get_secret(secret)
+            if val:
+                os.environ[secret] = val
+            else:
+                all_loaded = False
+        
+        # Configurando tracing explicitamente
         os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
         os.environ["LANGSMITH_TRACING"] = "true"
-        return all(results)
+        return all_loaded
 
     def invoke(self, input_data: dict) -> str:
         """Invokes the agent's stream and returns only the final, synthesized response."""
@@ -136,18 +133,18 @@ class RagAgent:
             # We iterate through the stream and only keep the content of the *last* AI Message.
             # This ensures we don't return intermediate steps like tool calls, only the final answer.
             final_response = ""
-            # Isolando o trace no projeto específico via Callback Tracer
-            tracer = LangChainTracer(project_name="rag_agent-v7.0")
-            for event in self.agent.stream(
-                input_payload, 
-                stream_mode="values", 
-                config={"callbacks": [tracer]}
-            ):
-                last_message = event["messages"][-1]
-                # Check if the newest message in the stream is from the AI.
-                if isinstance(last_message, AIMessage):
-                    # Overwrite the final response. The last one in the stream wins.
-                    final_response = last_message.content
+            # Isolando o trace no projeto específico via LangSmith Context
+            with ls.tracing_context(project_name="rag_agent-v7.0", enabled=True):
+                for event in self.agent.stream(
+                    input_payload, 
+                    stream_mode="values"
+                ):
+                    last_message = event["messages"][-1]
+                    # Check if the newest message in the stream is from the AI.
+                    if isinstance(last_message, AIMessage):
+                        # Overwrite the final response. The last one in the stream wins.
+                        # Usando a nova propriedade .text do LangChain v1.0
+                        final_response = last_message.text
             
             if not final_response:
                  return "O agente processou a informação, mas não gerou uma resposta final."

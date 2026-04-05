@@ -59,5 +59,24 @@ Durante a fase final, resolvemos um "bug" sistêmico crítico causado pela latê
 * **Sintoma**: O bot respondia várias vezes à mesma pergunta do usuário.
 * **Solução (Deduplicação)**: Implementamos um filtro de mensagens no `routes.py` usando um `deque` (LRU cache) para rastrear `message_id`s processados. Se um ID repetido chega em menos de 15s (retry), o sistema devolve imediatamente um HTTP 200 "OK" sem evocar a IA de novo, quebrando o loop de spam.
 
+## 12. A Saga do Agente de Agendamento (Google Calendar)
+A implementação do `g_calendar_agent` foi um dos maiores desafios de integração da V2, servindo como laboratório para a transição definitiva para o modelo "Zero-Disk":
+
+*   **O Desvio do ADK**: Inicialmente, tentamos adotar o *Agent Development Kit (ADK)* para padronização. Contudo, a complexidade de acoplamento e a dependência de estruturas locais provaram-se um gargalo para a agilidade necessária. Decidimos abortar o ADK em favor de uma implementação customizada e leve, focada em ferramentas (`tools`) puras.
+*   **Do Legado à Vanguarda (LangChain 0.3+)**: O código inicial sofria com a latência de chamadas diretas e padrões depreciados (`create_react_agent`). Ao refatorarmos para `create_agent` e `init_chat_model`, a performance saltou: o tempo de resposta caiu de ~70 segundos para impressionantes **9 segundos**.
+*   **A Batalha do Cloud Run (Statelessness)**: O maior obstáculo foi a volatilidade do sistema de arquivos do Cloud Run. Migramos o sistema de autenticação do Google (OAuth 2.0) de arquivos `token.json` locais para strings JSON persistidas no **Secret Manager**. 
+*   **O Loop dos Segredos**: Aprendemos uma lição valiosa sobre o ciclo de vida de containers. Como o Agente é um *Singleton* (inicializado no boot do Flask), a adição de segredos como a `GOOGLE_API_KEY` exigiu um redeploy forçado para que o container "limpasse" o estado de erro da memória e reconhecesse a nova configuração da nuvem.
+
+
+## 13. Refatoração LangChain v1.0 e Padronização de Utilitários
+Em Abril de 2026, iniciamos uma fase de "Polimento de Vanguarda" para alinhar o código com os padrões definitivos do LangChain v1.0 e organizar a arquitetura de arquivos para suportar escala:
+
+*   **Migração para o Namespace Simplificado**: Seguindo as diretrizes de 2026, abandonamos classes de integração direta (como `OpenAIEmbeddings`) em favor das funções de fábrica unificadas `init_embeddings` e `init_chat_model(..., output_version="v1")`. Isso torna os agentes agnósticos a provedores e prontos para o novo padrão de blocos de conteúdo.
+*   **Isolamento de Tracing via Contexto**: Substituímos o uso de `LangChainTracer` (deprecated) pelo `langsmith.tracing_context(project_name="...")`. Isso resolveu conflitos em ambientes multithreaded no Cloud Run, garantindo que o agent RAG e o Calendar tenham isolamento total de logs sem depender de variáveis de sistema globais.
+*   **Nascimento do Pacote `utils`**: Para profissionalizar o projeto, removemos arquivos soltos na raiz. Criamos o pacote `edcat_root/utils/` contendo:
+    *   `get_google_secrets.py`: A única fonte da verdade para o Secret Manager, eliminando 4 definições duplicadas da função `get_secret` espalhadas pelos agentes.
+    *   `helpers.py`: Centralizador de lógica de parsing resiliente, incluindo o tratamento defensivo de datas ISO para o `gemini-2.5-flash-lite`.
+*   **Otimização de Build (Docker)**: Realizamos uma auditoria no `Dockerfile`, removendo `COPY` redundantes e implementando um `.dockerignore` rigoroso. Isso reduziu o tamanho da imagem final e acelerou o ciclo de CI/CD ao evitar o upload de lixo local (`.venv`, `node_modules`).
+
 ---
-*Status Atual*: Versão 2.1 Finalizada e Blindada. O ecossistema EdCat agora conta com proteção contra retries de rede, deduplicação de mensagens e uma arquitetura híbrida Cloud Run + Firebase Hosting. Pronto para escala real.
+*Status Atual*: Refatoração v2.2 Concluída. Arquitetura Modular, Stateless e "DRY" (Don't Repeat Yourself).

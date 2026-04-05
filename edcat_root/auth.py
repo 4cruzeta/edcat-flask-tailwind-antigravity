@@ -4,7 +4,7 @@ from firebase_admin import auth as firebase_auth
 from datetime import datetime
 
 # Utiliza as funções recriadas imunes a quebras
-from .utils import get_secret
+from edcat_root.utils.get_google_secrets import get_secret
 
 auth_bp = Blueprint('auth_bp', __name__)
 

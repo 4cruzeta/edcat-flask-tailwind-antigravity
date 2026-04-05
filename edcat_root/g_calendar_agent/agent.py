@@ -1,18 +1,18 @@
 import os
 import logging
+import json
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
-from langchain_core.messages import AIMessage
-from langchain_core.tracers import LangChainTracer
-from dotenv import load_dotenv
+from langchain_core.messages import AIMessage, HumanMessage
+import langsmith as ls
+from google.cloud import secretmanager
 
+# Project utilities
+from edcat_root.utils.get_google_secrets import get_secret
 from .tools import CALENDAR_TOOLS
-from .services import get_secret
-
-load_dotenv()
 
 class CalendarAgent:
-    """Um Agente de Agendamento baseado na arquitetura da Vanguarda LangChain."""
+    """O Agente de Calendário unificado com a segurança e segredos do RAG."""
 
     def __init__(self, safe_mode=True):
         logging.info("Initializing Calendar Agent...")
@@ -20,16 +20,13 @@ class CalendarAgent:
         self.status_message = "Agent fully operational."
 
         if not self._load_secrets():
-            msg = "Agent initialization disabled: Could not configure LangSmith environment."
-            if not safe_mode: raise Exception(msg)
-            self.status_message = msg
+            # O status_message já foi preenchido com os detalhes dentro do _load_secrets
+            if not safe_mode: raise Exception(self.status_message)
             return
 
         try:
-            # Substituindo ChatGoogleGenerativeAI por init_chat_model com o provider correto
-            model = init_chat_model("gemini-2.5-flash", model_provider="google_genai", temperature=0.0)
+            model = init_chat_model("gemini-2.5-flash-lite", model_provider="google_genai", temperature=0.0, output_version="v1")
             
-            # O sistema operacional de Recepcionista Odontológica do MVP
             system_prompt = (
                 "Você é a recepcionista virtual de um consultório de Odontologia.\n\n"
                 
@@ -51,7 +48,6 @@ class CalendarAgent:
                 "- Aja sempre de forma direta."
             )
 
-            # A abstração master que inutilizou StateGraph manual
             self.agent = create_agent(model, CALENDAR_TOOLS, system_prompt=system_prompt)
             logging.info("LangGraph/LangChain create_agent successful.")
 
@@ -62,21 +58,31 @@ class CalendarAgent:
             return
 
     def _load_secrets(self) -> bool:
-        """Configurações mandatérias nativas no código prescritas no laboratório."""
-        project_id = os.environ.get('GOOGLE_CLOUD_PROJECT', 'edcat-site')
-        
-        # O agente de calendário também precisa buscar a chave do LangSmith na nuvem
-        langsmith_key = get_secret(project_id, "LANGSMITH_API_KEY")
-        if langsmith_key:
-            os.environ["LANGSMITH_API_KEY"] = langsmith_key
-            os.environ["LANGCHAIN_API_KEY"] = langsmith_key # Redundância de segurança
+        """Configura os segredos no ambiente global do container."""
+        # Lista mandatária de segredos (Gemini + LangSmith)
+        required = ["GOOGLE_API_KEY", "LANGSMITH_API_KEY"]
+        missing = []
+
+        for sec in required:
+            val = get_secret(sec)
+            if val:
+                os.environ[sec] = val
+                # Log de diagnóstico seguro
+                masked = val[0] + "..." + val[-1] if len(val) > 2 else "***"
+                logging.info(f"[CalendarAgent] Successfully retrieved '{sec}' (Value: {masked}).")
+            else:
+                missing.append(sec)
+
+        if missing:
+            self.status_message = f"Configuração incompleta. Segredos ausentes na nuvem: {', '.join(missing)}"
+            return False
             
-        # Configurando tracing explicitamente no próprio agente para separar do RAG
+        # Ativa o tracing
         os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
         os.environ["LANGSMITH_TRACING"] = "true"
+        os.environ["LANGCHAIN_API_KEY"] = os.environ.get("LANGSMITH_API_KEY", "")
         
-        # Confirma que a API foi providenciada globalmente
-        return "GOOGLE_API_KEY" in os.environ and "LANGSMITH_API_KEY" in os.environ
+        return True
 
     def invoke(self, input_data: dict) -> str:
         """Invoca o backend do LangGraph ignorando o stream parcial."""
@@ -84,29 +90,19 @@ class CalendarAgent:
             return f"Desculpe, o agente de IA está indisponível: {self.status_message}"
         
         try:
-            # Filtro de Inteligência (Retirado do seu lab!)
-            # Isolando o trace no projeto específico via Callback Tracer
-            tracer = LangChainTracer(project_name="g_calendar_agent")
             final_response = ""
-            for event in self.agent.stream(
-                input_data, 
-                stream_mode="values",
-                config={"callbacks": [tracer]}
-            ):
-                last_message = event["messages"][-1]
-                if isinstance(last_message, AIMessage):
-                    final_response = last_message.content
+            # Tracing isolado v1.0
+            with ls.tracing_context(project_name="calendar_agent-v3.0", enabled=True):
+                for event in self.agent.stream(
+                    input_data, 
+                    stream_mode="values"
+                ):
+                    last_message = event["messages"][-1]
+                    if isinstance(last_message, AIMessage):
+                        final_response = last_message.text
             
-            # Sanitiza a extração (em caso the tool calling the object pydantic format in Gemini)
-            if isinstance(final_response, list):
-                text_parts = [
-                    part["text"] if isinstance(part, dict) and "text" in part else str(part)
-                    for part in final_response
-                ]
-                final_response = " ".join(text_parts)
-
             if not final_response:
-                return "Ação executada em background sem formatação de texto."
+                return "O agente operou, mas não gerou texto de resposta."
 
             return str(final_response)
 
@@ -114,5 +110,5 @@ class CalendarAgent:
             logging.error(f"Erro no Agente de Calendário invocado: {e}")
             return f"Erro de inteligência: {e}"
 
-# Instância Singelton para uso em rotas
+# Instância Singleton para uso em rotas
 calendar_graph_agent = CalendarAgent()

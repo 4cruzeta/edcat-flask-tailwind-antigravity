@@ -4,6 +4,17 @@ from pydantic import BaseModel, Field
 
 from . import services
 
+# Tradução do número da hora para a string humanizada (UX Rule)
+# Centralizado aqui por ser uma decisão de representação/UI do Agente.
+HUMAN_SLOT_MAP = {
+    8: "8h-manhã",
+    9: "9h-manhã",
+    10: "10h-manhã",
+    14: "2h-tarde",
+    15: "3h-tarde",
+    16: "4h-tarde"
+}
+
 # 1. Ferramenta de Consulta de Slots
 class GetSlotsArgs(BaseModel):
     days_ahead: int = Field(6, description="Quantidade de dias úteis projetados para frente.")
@@ -37,9 +48,9 @@ def get_available_booking_slots_tool(days_ahead: int = 6) -> str:
                 for d in column_names:
                     if i < len(grid[d]):
                         iso_val = grid[d][i]["iso"]
-                        human_val = grid[d][i]["human"]
+                        hour_val = grid[d][i]["hour"]
+                        human_val = HUMAN_SLOT_MAP.get(hour_val, f"{hour_val}h")
                         # Embutindo o valor ISO em um comentário HTML invisível ao lado do número
-                        # Assim o agente pode extrair com Regex ou ler, sem sujar a tela do user
                         row.append(f"{human_val} <!--{iso_val}-->")
                     else:
                         row.append(" ")

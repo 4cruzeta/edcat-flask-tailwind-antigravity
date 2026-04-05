@@ -8,8 +8,7 @@ COPY package.json package-lock.json* ./
 RUN npm ci
 
 # Copy the CSS inputs and HTML templates (Tailwind V4 doesn't need external JS configs)
-COPY edcat_root/static/css/input.css ./edcat_root/static/css/input.css
-COPY edcat_root/pages/templates/ ./edcat_root/pages/templates/
+COPY edcat_root/ ./edcat_root/
 
 # Build Tailwind CSS V4 explicitly pointing the input
 RUN npx @tailwindcss/cli \
