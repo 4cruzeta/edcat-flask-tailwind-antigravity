@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: EDCAT 0.1\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-11-04 17:30+0000\n"
+"POT-Creation-Date: 2026-04-05 16:00-0300\n"
 "PO-Revision-Date: 2024-07-31 01:28+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: pt_BR\n"
@@ -16,139 +16,99 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.17.0\n"
+"Generated-By: Babel 2.18.0\n"
 
-#: edcat_root/pages/templates/admin_home.html:7
-#: edcat_root/pages/templates/admin_home.html:13
-msgid "Admin Dashboard"
-msgstr "Painel Administrativo"
-
-#: edcat_root/pages/templates/admin_home.html:7
-#: edcat_root/pages/templates/header.html:3
-#: edcat_root/pages/templates/index.html:8
-#: edcat_root/pages/templates/login.html:8
+#: edcat_root/pages/templates/base.html:18
+#: edcat_root/pages/templates/index.html:3
 msgid "EDCAT"
 msgstr "EDCAT"
 
-#: edcat_root/pages/templates/admin_home.html:15
-msgid "Welcome,"
-msgstr "Bem-vindo,"
+#: edcat_root/pages/templates/base.html:27
+msgid "Language"
+msgstr "Idioma"
 
-#: edcat_root/pages/templates/admin_home.html:15
-msgid "Administrator"
-msgstr "Administrador"
-
-#: edcat_root/pages/templates/admin_home.html:18
-msgid "This page is protected. Only logged-in users can see this."
-msgstr "Esta página é protegida. Somente usuários autenticados podem vê-la."
-
-#: edcat_root/pages/templates/admin_home.html:20
-msgid "Logout"
-msgstr "Sair"
-
-#: edcat_root/pages/templates/header.html:7
-#: edcat_root/pages/templates/login.html:8
+#: edcat_root/pages/templates/base.html:52
 msgid "Login"
 msgstr "Entrar"
 
-#: edcat_root/pages/templates/login.html:14
-msgid "Restricted Area Access"
-msgstr "Acesso à Área Restrita"
-
-#: edcat_root/pages/templates/login.html:15
-msgid "Please enter your credentials."
-msgstr "Por favor, insira suas credenciais."
-
-#: edcat_root/pages/templates/login.html:21
-msgid "Email"
-msgstr "E-mail"
-
-#: edcat_root/pages/templates/login.html:27
-msgid "Password"
-msgstr "Senha"
-
-#: edcat_root/pages/templates/login.html:33
-msgid "Sign In"
-msgstr "Entrar"
-
-#: edcat_root/pages/templates/login.html:105
-msgid "Invalid credentials. Please try again."
-msgstr "Credenciais inválidas. Por favor, tente novamente."
-
-#: edcat_root/pages/templates/login.html:107
-msgid "An unexpected error occurred."
-msgstr "Ocorreu um erro inesperado."
-
-#: edcat_root/pages/templates/index.html:13
+#: edcat_root/pages/templates/index.html:15
 msgid "Welcome to our new website!"
 msgstr "Bem-vindo ao nosso novo site!"
 
-#: edcat_root/pages/templates/index.html:13
+#: edcat_root/pages/templates/index.html:16
 msgid "We're adjusting our system to make our services available in this space."
-msgstr "Estamos ajustando nosso sistema para disponibilizar nossos serviços nesse espaço."
+msgstr ""
+"Estamos ajustando nosso sistema para disponibilizar nossos serviços nesse"
+" espaço."
 
-#: edcat_root/pages/templates/index.html:21
+#: edcat_root/pages/templates/index.html:18
 msgid "CuReMAIn"
 msgstr "CuReMAIn"
 
-#: edcat_root/pages/templates/index.html:21
+#: edcat_root/pages/templates/index.html:19
 msgid "(Customer Relationship Maganer with AI)"
 msgstr "(Customer Relationship Maganer with AI)"
 
-#: edcat_root/pages/templates/index.html:24
+#: edcat_root/pages/templates/index.html:20
 msgid ""
 "Your company's relationship with its customers is the foundation for new "
-"business and maintaining its presence in today's competitive market."
+"business and maintaining\n"
+"its presence in today's competitive market."
 msgstr ""
 "O relacionamento que sua empresa tem com seus clientes é a base para "
 "novos negócios e para a manutenção de sua empresa no mercado competitivo "
 "que temos hoje."
 
-#: edcat_root/pages/templates/index.html:24
+#: edcat_root/pages/templates/index.html:22
 msgid ""
 "With our AI-powered customer tracking system, this task, which requires "
-"highly skilled personnel, can be optimized by using intelligent queries "
-"to your databases and product documentation."
+"highly skilled personnel,\n"
+"can be optimized by using intelligent queries to your databases and "
+"product documentation."
 msgstr ""
 "Com nosso sistema de acompanhamento de clientes assistido por IA, esse "
 "trabalho que demanda pessoal gabaritado, pode ser otimizado com o uso de "
 "consulta inteligente aos seus bancos de dados e documentação de produtos."
 
-#: edcat_root/pages/templates/index.html:33
+#: edcat_root/pages/templates/index.html:25
 msgid "RAGA"
 msgstr "RAGA"
 
-#: edcat_root/pages/templates/index.html:33
+#: edcat_root/pages/templates/index.html:26
 msgid "(Retrieval-Augmented Generation Agent)"
 msgstr "(Retrieval-Augmented Generation Agent)"
 
-#: edcat_root/pages/templates/index.html:36
+#: edcat_root/pages/templates/index.html:27
 msgid "We develop custom agents to automatically respond to your customers."
-msgstr "Desenvolvemos agentes personalizados que respondem automaticamente aos seus clientes."
+msgstr ""
+"Desenvolvemos agentes personalizados que respondem automaticamente aos "
+"seus clientes."
 
-#: edcat_root/pages/templates/index.html:36
+#: edcat_root/pages/templates/index.html:28
 msgid ""
 "Based on a database, we can develop an agent that answers specific "
-"questions collected from previous experiences with the CuReMAIn system or"
-" from a product manual manufactured by the company."
+"questions collected from\n"
+"previous experiences with the CuReMAIn system or from a product manual "
+"manufactured by the company."
 msgstr ""
 "Baseado em um banco de dados, podemos desenvolver um agente que responde "
 "perguntas específicas coletadas de experiências anteriores do sistema "
 "CuReMAIn, ou do manual de um produto fabricado pela empresa."
 
-#: edcat_root/pages/templates/index.html:47
+#: edcat_root/pages/templates/index.html:31
 msgid "CybSeS"
 msgstr "CybSeS"
 
-#: edcat_root/pages/templates/index.html:47
+#: edcat_root/pages/templates/index.html:32
 msgid "(Cyber Security Supremacy)"
 msgstr "(Cyber Security Supremacy)"
 
-#: edcat_root/pages/templates/index.html:50
+#: edcat_root/pages/templates/index.html:33
 msgid ""
 "Cybersecurity has entered a new era in 2025, where artificial "
-"intelligence can be used as a shield, but unfortunately, it is also used "
-"as a sword on a digital battlefield that is becoming increasingly "
+"intelligence can be used as a\n"
+"shield, but unfortunately, it is also used as a sword on a digital "
+"battlefield that is becoming increasingly\n"
 "sophisticated every day."
 msgstr ""
 "A cibersegurança entrou em uma nova era em 2025, onde a inteligência "
@@ -156,67 +116,75 @@ msgstr ""
 "como espada no campo de batalha digital, que está ficando mais "
 "sofisticado a cada dia."
 
-#: edcat_root/pages/templates/index.html:50
+#: edcat_root/pages/templates/index.html:36
 msgid ""
 "We have the expertise and tools to ensure the security of your data in "
 "this new battleground."
-msgstr "Temos expertise e ferramentas para garantir a segurança de seus dados nessa nova arena de batalha."
+msgstr ""
+"Temos expertise e ferramentas para garantir a segurança de seus dados "
+"nessa nova arena de batalha."
 
-#: edcat_root/pages/templates/index.html:59
+#: edcat_root/pages/templates/index.html:39
 msgid "ConSISO"
 msgstr "ConSISO"
 
-#: edcat_root/pages/templates/index.html:59
+#: edcat_root/pages/templates/index.html:40
 msgid "(Consulting for ISO)"
 msgstr "(Consulting for ISO)"
 
-#: edcat_root/pages/templates/index.html:62
+#: edcat_root/pages/templates/index.html:41
 msgid "Consulting for the implementation of ISO 27001 and 42001 standards."
 msgstr "Consultoria para implantação de normas ISO 27001 e 42001."
 
-#: edcat_root/pages/templates/index.html:62
+#: edcat_root/pages/templates/index.html:42
 msgid ""
 "Preparing a company for ISO certification requires the creation of a "
-"series of documents, the planning of various control procedures, and the "
-"verification of their effectiveness."
+"series of documents, the\n"
+"planning of various control procedures, and the verification of their "
+"effectiveness."
 msgstr ""
 "Preparar uma empresa para a certificação ISO exige a elaboração de uma "
 "série de documentos, o planejamento de diversos procedimentos de controle"
 " e a verificação de sua eficácia."
 
-#: edcat_root/pages/templates/index.html:62
+#: edcat_root/pages/templates/index.html:44
 msgid ""
 "We have a qualified technical team to provide the necessary consultancy "
-"to achieve success in first or second-party certification."
-msgstr "Temos uma equipe técnica qualificada para prover a consultoria necessária para alcançar o sucesso em uma certificação de primeira ou de segunda parte."
+"to achieve success in\n"
+"first or second-party certification."
+msgstr ""
+"Temos uma equipe técnica qualificada para prover a consultoria necessária"
+" para alcançar o sucesso em uma certificação de primeira ou de segunda "
+"parte."
 
-#: edcat_root/pages/templates/index.html:71
+#: edcat_root/pages/templates/index.html:47
 msgid "TOPS"
 msgstr "TOPS"
 
-#: edcat_root/pages/templates/index.html:71
+#: edcat_root/pages/templates/index.html:48
 msgid "(Total On Premisses Support)"
 msgstr "(Total On Premisses Support)"
 
-#: edcat_root/pages/templates/index.html:74
+#: edcat_root/pages/templates/index.html:49
 msgid "Consulting for implementing your company's IT infrastructure."
 msgstr "Consultoria para implementar a infraestrutura de TI da sua empresa."
 
-#: edcat_root/pages/templates/index.html:74
+#: edcat_root/pages/templates/index.html:50
 msgid ""
 "Even if you use our cloud solutions, you will still need a computer "
-"network infrastructure installed in your company so that your employees "
-"can perform their tasks."
+"network infrastructure\n"
+"installed in your company so that your employees can perform their tasks."
 msgstr ""
 "Mesmo que utilize nossas soluções em nuvem, você ainda precisará de uma "
 "infraestrutura de rede de computadores instalada em sua empresa para que "
 "seus funcionários possam realizar suas tarefas."
 
-#: edcat_root/pages/templates/index.html:74
+#: edcat_root/pages/templates/index.html:52
 msgid ""
 "We offer consulting services for this implementation, from the basics, "
-"such as providing quality electricity, which is the minimum necessary for"
-" the proper functioning of all systems, to cloud migration and learning "
+"such as providing quality\n"
+"electricity, which is the minimum necessary for the proper functioning of"
+" all systems, to cloud migration and learning\n"
 "how to use your systems in that environment."
 msgstr ""
 "Oferecemos serviços de consultoria para essa implementação, desde o "
@@ -225,8 +193,49 @@ msgstr ""
 "migração para a nuvem e o aprendizado de como usar seus sistemas nesse "
 "ambiente."
 
-#: edcat_root/pages/templates/index.html:74
+#: edcat_root/pages/templates/index.html:55
 msgid ""
 "If you're like some of our clients who insist on keeping your entire "
-"infrastructure offline, don't worry, we have solutions for you too."
-msgstr "Se você é como alguns de nossos clientes que insistem em manter toda a sua infraestrutura offline, não se preocupe, também temos soluções para você."
+"infrastructure offline,\n"
+"don't worry, we have solutions for you too."
+msgstr ""
+"Se você é como alguns de nossos clientes que insistem em manter toda a "
+"sua infraestrutura offline, não se preocupe, também temos soluções para "
+"você."
+
+#~ msgid "Admin Dashboard"
+#~ msgstr "Painel Administrativo"
+
+#~ msgid "Welcome,"
+#~ msgstr "Bem-vindo,"
+
+#~ msgid "Administrator"
+#~ msgstr "Administrador"
+
+#~ msgid "This page is protected. Only logged-in users can see this."
+#~ msgstr "Esta página é protegida. Somente usuários autenticados podem vê-la."
+
+#~ msgid "Logout"
+#~ msgstr "Sair"
+
+#~ msgid "Restricted Area Access"
+#~ msgstr "Acesso à Área Restrita"
+
+#~ msgid "Please enter your credentials."
+#~ msgstr "Por favor, insira suas credenciais."
+
+#~ msgid "Email"
+#~ msgstr "E-mail"
+
+#~ msgid "Password"
+#~ msgstr "Senha"
+
+#~ msgid "Sign In"
+#~ msgstr "Entrar"
+
+#~ msgid "Invalid credentials. Please try again."
+#~ msgstr "Credenciais inválidas. Por favor, tente novamente."
+
+#~ msgid "An unexpected error occurred."
+#~ msgstr "Ocorreu um erro inesperado."
+

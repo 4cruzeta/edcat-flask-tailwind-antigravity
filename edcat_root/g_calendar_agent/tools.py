@@ -12,7 +12,8 @@ HUMAN_SLOT_MAP = {
     10: "10h-manhã",
     14: "2h-tarde",
     15: "3h-tarde",
-    16: "4h-tarde"
+    16: "4h-tarde",
+    17: "5h-tarde"
 }
 
 # 1. Ferramenta de Consulta de Slots

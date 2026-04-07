@@ -80,3 +80,29 @@ Em Abril de 2026, iniciamos uma fase de "Polimento de Vanguarda" para alinhar o 
 
 ---
 *Status Atual*: Refatoração v2.2 Concluída. Arquitetura Modular, Stateless e "DRY" (Don't Repeat Yourself).
+
+## 14. Erros de Tradução e o Desafio da Formatação (Babel)
+Em Abril de 2026, identificamos um problema recorrente onde textos em português não eram exibidos, apesar de estarem presentes no arquivo `messages.po`.
+
+*   **O Vilão Invisível (Formatadores)**: Descobrimos que auto-formatadores de IDE (como Prettier/HTML Formatter) ao organizar o código HTML, frequentemente inserem quebras de linha (`\n`) dentro das tags `{{ _('...') }}`. Para o Babel, o texto "Olá Mundo" é diferente de "Olá\nMundo", o que faz com que ele ignore a tradução existente e crie uma nova entrada "fuzzy" no catálogo.
+*   **O Bloqueio "Fuzzy"**: Quando o Babel encontra uma tradução aproximada mas não exata, ele marca a entrada com a tag `#, fuzzy`. O Flask-Babel, por segurança, **ignora** qualquer tradução marcada como fuzzy no site, resultando no texto aparecendo em inglês (fallback).
+*   **A Lição da Compilação**: Diferente de rotas ou templates, mudanças nos arquivos `.po` (texto) **não são automáticas**. Elas exigem a geração manual de arquivos binários `.mo` para que o servidor consiga lê-las.
+
+### Fluxo de Trabalho Recomendado (i18n):
+Para manter as traduções saudáveis, adotamos o seguinte ritual após qualquer mudança em textos de templates ou arquivos Python:
+
+```bash
+# 1. Extrair novos textos do código para o template principal
+uv run pybabel extract -F babel.cfg -k _ -k _l -o edcat_root/translations/messages.pot .
+
+# 2. Sincronizar as novidades com os arquivos de cada idioma (.po)
+uv run pybabel update -i edcat_root/translations/messages.pot -d edcat_root/translations
+
+# 3. Revisão Manual: Abrir o .po e remover tags "#, fuzzy" se a tradução estiver correta
+
+# 4. Compilar para binário (gera o .mo que o Flask realmente usa)
+uv run pybabel compile -d edcat_root/translations
+```
+
+---
+*Status Atual*: Traduções V2.3 Sincronizadas e Compiladas. Fluxo de i18n documentado.
