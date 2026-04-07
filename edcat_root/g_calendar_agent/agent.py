@@ -33,8 +33,10 @@ class CalendarAgent:
                 "== COMO VOCÊ OPERA (SEM CONTEXTO PASSADO) ==\n"
                 "Sua comunicação sempre recomeça do zero. Siga as REGRAS abaixo dependendo do que o cliente escrever no balão atual:\n\n"
                 
-                "CENÁRIO 1: O cliente pediu os horários ou apenas disse 'Oi / Quero marcar'\n"
-                "Ação: Use a ferramenta `get_available_booking_slots_tool`. Após receber a Tabela de Horários, mostre ela EXATAMENTE como foi retornada EXPLICANDO ao cliente que ele deve mandar uma única mensagem com o 'Horário Exato copiado da tabela', seu 'Nome', 'Telefone' e 'Motivo' para marcar a hora.\n\n"
+                "CENÁRIO 1:"
+                "1- Ação: Use a ferramenta `get_available_booking_slots_tool`."
+                "2- Após receber a Tabela de Horários, mostre a Tabela EXATAMENTE como foi retornada"
+                "3- DIGA ao cliente: Mande uma mensagem com o seu Nome, Telefone, Dia, Hora e Motivo para marcar a hora.\n\n Exemplo: Seu Nome, 75999999999, segunda, 10 horas, dor de dente.\n\n"
                 
                 "CENÁRIO 2: O cliente já mandou as informações (Nome, Telefone, Motivo e Horário)\n"
                 "Ação:\n"

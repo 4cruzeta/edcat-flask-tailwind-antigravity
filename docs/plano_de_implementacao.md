@@ -50,54 +50,45 @@ Procedimentos rigorosos para evitar o "Deploy Fantasma".
 - [ ] Setup do `service.yaml` com todas as variáveis obrigatórias documentadas.
 - [ ] Scripts de automação `devserver.sh` consolidados para o desenvolvedor local se orientar.
 
-# 📅 Plano Final: Agente de Agendamento - Consultório Dental (MVP)
+# 📅 Plano Final: Agente de Agendamento - Consultório Dental (Vanguarda 2026)
 
-Este plano detalha a implementação final do agente de agendamento, focado na coleta de dados do cliente e no cumprimento fiel da grade de horários do consultório.
+Este plano detalha a implementação do agente especialista de agendamento, redesenhado para atuar como um "trabalhador especializado" que será futuramente orquestrado por um Agente Supervisor.
 
-## 1. Regras de Negócio Inegociáveis
-
-> [!IMPORTANT]
-> **Grade de Horários Semanal**:
-> - **Segunda, Terça, Quinta, Sexta**: 08h-11h (Manhã) e 14h-17h (Tarde).
-> - **Quarta**: **FECHADO** (Não mostrar na tabela).
-> - **Sábado**: 08h-11h (**Apenas Manhã**).
-> - **Domingo**: **FECHADO**.
+## 1. Regras de Negócio e Especialização
 
 > [!IMPORTANT]
-> **Bloqueios de Data (Blackout)**:
-> - O sistema permitirá uma lista de datas específicas (ex: `2026-04-17`) que serão removidas da disponibilidade, independente do dia da semana.
+> **Estratégia Proativa**: Ao ser invocado pelo Supervisor (ou ao iniciar o fluxo de agendamento), o agente não deve esperar o cliente perguntar. Ele deve **proativamente** buscar a grade dos próximos 6 dias úteis e apresentá-la.
 
 > [!IMPORTANT]
-> **Fluxo Conversacional**:
-> 1. Perguntar o **Nome**.
-> 2. Perguntar o **Telefone**.
-> 3. Perguntar o **Motivo** (ex: "estou com dor de dente").
-> 4. Apresentar Tabela de Disponibilidade (UX `3h - tarde`).
-> 5. Confirmar e Criar Evento.
+> **Grade de Horários (Fixo via Código)**:
+> - **Seg, Ter, Qui, Sex**: 08h-11h e 14h-17h.
+> - **Quarta**: FECHADO.
+> - **Sábado**: 08h-11h (Manhã apenas).
+> - **Domingo**: FECHADO.
 
-## 2. Implementação Técnica
+## 2. Fluxo Conversacional "Hands-On"
 
-### A. Serviços (`services.py`)
-- **Configuração de Agenda**: 
-    - Objeto `WORKING_HOURS` mapeando dias da semana (0-6).
-    - Lista `EXCLUDED_DATES` para bloqueios manuais.
-- **Formatação de Título**: 
-    - O evento no Google Calendar será criado como: `{NOME} - {TELEFONE} - {MOTIVO}`.
+1.  **Início Imediato**: O agente chama `get_available_booking_slots_tool(days_ahead=6)`.
+2.  **Apresentação UX**: Exibe a tabela Markdown e solicita: "Qual destes horários fica melhor para você?".
+3.  **Coleta de Dados**: Se as informações (Nome, Telefone, Motivo) não vierem no contexto inicial do Supervisor, o agente as solicita de forma cordial.
+4.  **Confirmação**: Após a escolha do horário, o agente usa a `confirm_booking_tool`.
 
-### B. Agente e Ferramentas (`agent.py` & `tools.py`)
-- **System Prompt**: Definir o "tom de voz" de um recepcionista profissional. Instruir para coletar as 3 informações antes de sugerir horários.
-- **Ferramentas**:
-    - `get_available_slots_tool`: Retorna a tabela Markdown dos próximos 6 dias úteis seguindo a grade.
-    - `confirm_booking_tool(name, phone, reason, slot_iso)`: Faz a inserção final.
+## 3. Implementação Técnica (Refinamento)
 
-### C. Observabilidade
-- Tracing completo no **LangSmith** para validar se o agente está coletando os dados corretamente e convertendo os horários amigáveis para ISO.
+### A. Ferramentas (`tools.py`)
+- **Remoção de Ambiguidade**: A descrição das ferramentas deve enfatizar que o sistema opera em **Dias Úteis**. Se o usuário pedir "amanhã" e for sábado, o agente deve explicar que a clínica não abre (ou abre só de manhã) se for o caso, baseando-se no retorno da ferramenta.
+- **Pydantic**: O campo `days_ahead` será mantido para flexibilidade, mas o `system_prompt` forçará o uso de `6` como padrão de excelência.
 
-## 3. Questões Resolvidas
-- **Cancelamento**: Não implementado nesta fase (MVP).
-- **Cadastro**: Será feito via perguntas diretas pelo agente de calendário (futuramente integrado a um banco de dados).
+### B. Prompt do Agente (`agent.py`)
+- **Novo Role**: "Você é o Especialista de Agendamento. Seu único objetivo é levar o cliente até a confirmação do horário."
+- **Contexto Externo**: Preparado para receber `initial_context` (dados já coletados pelo Supervisor).
 
-## 4. Plano de Verificação
-- **Teste de Grade**: Verificar se Quarta-feira e Domingo sumiram da tabela.
-- **Teste de Sábado**: Verificar se no Sábado apenas as opções de "manhã" aparecem.
-- **Teste de Criação**: Validar se o título do evento no Calendar contém todas as informações coletadas.
+## 4. Evolução: O Supervisor (Próximo Capítulo)
+O Supervisor será o roteador inicial que:
+- Identifica a intenção (Agendar, Pagamento, Fornecedor).
+- Coleta o nome básico do usuário.
+- Faz o "handoff" para o Agente de Agendamento injetando os dados já conhecidos.
+
+---
+
+*Status Atual*: Em transição para Agente Especialista. Lógica de Calendário robusta e imune a ambiguidades de fuso horário.

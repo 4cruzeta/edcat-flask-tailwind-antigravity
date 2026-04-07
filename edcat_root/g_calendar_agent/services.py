@@ -1,5 +1,6 @@
 import os
 import datetime
+import json
 import logging
 import pytz
 from typing import List, Dict
@@ -9,6 +10,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from tzlocal import get_localzone
 
 # Project utilities
@@ -40,10 +42,6 @@ WORKING_HOURS = {
     6: []                      # Domingo (Fechado)
 }
 
-import json
-from google.cloud import secretmanager
-
-# ... Keep other imports intact
 
 def get_calendar_service():
     """Autenticação OAuth 2.0 (Stateless) usando Google Secret Manager."""
@@ -76,22 +74,21 @@ def get_available_booking_slots(days_ahead=6) -> Dict:
     
     # 1. Obter a data inicial (agora) e gerar a grade teórica
     now = datetime.datetime.now(business_tz)
+    time_min = now.astimezone(pytz.UTC).isoformat().replace("+00:00", "Z")
+    time_max = (now + datetime.timedelta(days=7)).astimezone(pytz.UTC).isoformat().replace("+00:00", "Z")
     
     # Prepara a estrutura do calendário livre
     theoretical_slots = {}
-    time_min = None
-    time_max = None
     
-    # Gera os blocos teóricos para os próximos dias (ignorando dias inválidos)
+    # Gera os blocos teóricos para os próximos 7 dias corridos
     current_date = now.date()
-    valid_days_added = 0
     days_checked = 0
     
-    while valid_days_added < days_ahead and days_checked < 30: # limite de segurança 30 dias
+    while days_checked < 7:
         date_str = current_date.strftime('%Y-%m-%d')
         week_day = current_date.weekday()
         
-        # Ignora Feriados Nacionais, Domingos, Quartas, e Bloqueios Customizados
+        # Ignora Feriados Nacionais, Domingos, e Bloqueios Customizados
         if (current_date in br_holidays) or \
            (date_str in BLACKOUT_DATES) or \
            (len(WORKING_HOURS.get(week_day, [])) == 0):
@@ -99,19 +96,13 @@ def get_available_booking_slots(days_ahead=6) -> Dict:
             days_checked += 1
             continue
             
-        valid_days_added += 1
-        
         # Cria os datetimes ISO dos horários potenciais desta data
         allowed_hours = WORKING_HOURS[week_day]
         for hour in allowed_hours:
             dt = business_tz.localize(datetime.datetime.combine(current_date, datetime.time(hour, 0)))
             dt_iso = dt.astimezone(pytz.UTC).isoformat().replace("+00:00", "Z")
             
-            if dt > now: # Só projeta horas p/ o futuro (relevante pro próprio dia atual)
-                if not time_min: 
-                    time_min = dt_iso
-                time_max = (dt + datetime.timedelta(hours=1)).astimezone(pytz.UTC).isoformat().replace("+00:00", "Z")
-                
+            if dt > now: 
                 theoretical_slots[dt_iso] = {
                     "day_label": current_date.strftime('%A-%d').replace('Monday', 'segunda').replace('Tuesday', 'terça').replace('Thursday', 'quinta').replace('Friday', 'sexta').replace('Saturday', 'sábado'),
                     "hour": hour,
