@@ -1,116 +1,115 @@
 import os
+import sys
 import logging
-import json
-from langchain.agents import create_agent
+from typing import List, Dict, Optional
+
+# LangChain components
+from langchain_core.messages import HumanMessage, AIMessage, BaseMessage, SystemMessage
 from langchain.chat_models import init_chat_model
-from langchain_core.messages import AIMessage, HumanMessage
-import langsmith as ls
-from google.cloud import secretmanager
+from langchain.agents import create_agent
 
 # Project utilities
 from edcat_root.utils.get_google_secrets import get_secret
 from .tools import CALENDAR_TOOLS
+from .firestore_history import FirestoreChatMessageHistory
+import edcat_root.utils.langsmith_config as ls
 
 class CalendarAgent:
-    """O Agente de Calendário unificado com a segurança e segredos do RAG."""
-
-    def __init__(self, safe_mode=True):
+    def __init__(self, model_name: str = "gemini-2.5-flash-lite"):
+        """Inicializa o Agente de Calendário com suporte a Memória Firestore."""
         logging.info("Initializing Calendar Agent...")
-        self.agent = None
-        self.status_message = "Agent fully operational."
-
-        if not self._load_secrets():
-            # O status_message já foi preenchido com os detalhes dentro do _load_secrets
-            if not safe_mode: raise Exception(self.status_message)
-            return
-
+        self._load_secrets()
+        
         try:
-            model = init_chat_model("gemini-2.5-flash-lite", model_provider="google_genai", temperature=0.0, output_version="v1")
+            model = init_chat_model(model_name, model_provider="google_genai", temperature=0.0, output_version="v1")
             
             system_prompt = (
-                "Você é a recepcionista virtual de um consultório de Odontologia.\n\n"
+                "Você é a Assistente de Agendamentos da EdCat. Sua missão é gerenciar a agenda do Google Calendar com PRECISÃO ABSOLUTA.\n\n"
                 
-                "== COMO VOCÊ OPERA (SEM CONTEXTO PASSADO) ==\n"
-                "Sua comunicação sempre recomeça do zero. Siga as REGRAS abaixo dependendo do que o cliente escrever no balão atual:\n\n"
-                
-                "CENÁRIO 1:"
-                "1- Ação: Use a ferramenta `get_available_booking_slots_tool`."
-                "2- Após receber a Tabela de Horários, mostre a Tabela EXATAMENTE como foi retornada"
-                "3- DIGA ao cliente: Mande uma mensagem com o seu Nome, Telefone, Dia, Hora e Motivo para marcar a hora.\n\n Exemplo: Seu Nome, 75999999999, segunda, 10 horas, dor de dente.\n\n"
-                
-                "CENÁRIO 2: O cliente já mandou as informações (Nome, Telefone, Motivo e Horário)\n"
-                "Ação:\n"
-                "1. Primeiro, sem dizer nada ao usuário, use a ferramenta `get_available_booking_slots_tool` novamente contra o sistema para gerar mentalmente a Tabela de Horários mais atual com os códigos ISO.\n"
-                "2. Encontre na tabela retornada o código invisível ISO `<!--...-->` que corresponde ao dia da semana e horário amigável que o cliente escolheu no texto dele.\n"
-                "3. Chame a ferramenta `confirm_booking_tool` usando os dados do texto do cliente e o slot_iso que você acabou de extrair da tabela mental.\n"
-                "4. Confirme para o cliente que está agendado e seja educada.\n\n"
-                
+                "== PROCESSO DE PENSAMENTO (OBRIGATÓRIO) ==\n"
+                "Sempre que precisar responder sobre horários ou dias disponíveis, siga estes passos:\n"
+                "1. Analise o histórico e localize a Tabela Markdown MAIS RECENTE e o metadado `DISPONIBILIDADE_TOTAL`.\n"
+                "2. Antes de responder, verifique se o dia mencionado pelo usuário (ex: Terça) possui slots com o código invisível `<!--...-->`.\n"
+                "3. Se o dia possuir slots na tabela ou no metadado, ele ESTÁ disponível. Nunca diga o contrário.\n\n"
+
+                "== REGRAS DE OURO ==\n"
+                "1. Início de Conversa: Se o usuário disser 'Oi', 'Olá' ou se for o comando 'MOSTRAR_HORARIOS_INICIAIS', chame imediatamente a ferramenta `get_available_booking_slots_tool`.\n"
+                "2. Transparência: Não invente horários. Se não estiver na tabela, não existe.\n"
+                "3. Confirmação: Para agendar, você precisa de: Nome, Telefone, Dia, Hora e Motivo (pegue o que puder do histórico).\n\n"
+
+                "== FLUXO DE TRABALHO ==\n"
+                "FASE 1: Consulta (Ferramenta)\n"
+                "- Ação: Utilize `get_available_booking_slots_tool`.\n"
+                "- Resposta: Mostre a tabela Markdown completa e os slots. Diga: 'Estes são os horários disponíveis. Para marcar, envie: Nome, Telefone, Dia, Hora e Motivo.'\n\n"
+
+                "FASE 2: Agendamento\n"
+                "- Quando tiver todos os 5 dados (vistos no histórico ou informados agora):\n"
+                "  1. Pegue o código ISO correspondente na tabela.\n"
+                "  2. Chame `confirm_booking_tool`.\n"
+                "  3. Comunique o sucesso.\n\n"
+
                 "REGRAS VITAIS:\n"
-                "- Nunca adivinhe ou fabrique horários ISO. Sempre consulte a tabela de slots disponíveis primeiro no mesmo turno.\n"
-                "- Aja sempre de forma direta."
+                "- Revise TODA a tabela (inclusive colunas à direita) antes de informar indisponibilidade.\n"
+                "- Use o histórico para evitar perguntas repetitivas."
             )
 
+            # Criamos o agente base (LangGraph-based)
             self.agent = create_agent(model, CALENDAR_TOOLS, system_prompt=system_prompt)
-            logging.info("LangGraph/LangChain create_agent successful.")
-
+            
         except Exception as e:
-            msg = f"Failed to create LangChain agent: {e}"
-            if not safe_mode: raise Exception(msg)
-            self.status_message = msg
-            return
+            logging.error(f"[CalendarAgent] Erro na inicialização: {e}")
+            raise
 
-    def _load_secrets(self) -> bool:
+    def _load_secrets(self):
         """Configura os segredos no ambiente global do container."""
-        # Lista mandatária de segredos (Gemini + LangSmith)
         required = ["GOOGLE_API_KEY", "LANGSMITH_API_KEY"]
-        missing = []
-
         for sec in required:
             val = get_secret(sec)
             if val:
                 os.environ[sec] = val
-                # Log de diagnóstico seguro
-                masked = val[0] + "..." + val[-1] if len(val) > 2 else "***"
-                logging.info(f"[CalendarAgent] Successfully retrieved '{sec}' (Value: {masked}).")
             else:
-                missing.append(sec)
+                logging.warning(f"[CalendarAgent] Chave '{sec}' não encontrada.")
 
-        if missing:
-            self.status_message = f"Configuração incompleta. Segredos ausentes na nuvem: {', '.join(missing)}"
-            return False
-            
-        # Ativa o tracing
-        os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
-        os.environ["LANGSMITH_TRACING"] = "true"
-        os.environ["LANGCHAIN_API_KEY"] = os.environ.get("LANGSMITH_API_KEY", "")
-        
-        return True
-
-    def invoke(self, input_data: dict) -> str:
-        """Invoca o backend do LangGraph ignorando o stream parcial."""
-        if not self.agent:
-            return f"Desculpe, o agente de IA está indisponível: {self.status_message}"
-        
+    def invoke(self, message: str, session_id: str, metadata: Optional[Dict] = None) -> str:
+        """Executa um turno do agente com gestão manual de memória via Firestore."""
         try:
+            # 1. Recupera o histórico do Firestore
+            history_manager = FirestoreChatMessageHistory(session_id)
+            messages = history_manager.messages
+            
+            # 2. Prepara a nova mensagem
+            input_text = message
+            
+            if metadata and "phone" in metadata:
+                input_text = f"[SISTEMA: Usuário identificado via WhatsApp com telefone {metadata['phone']}]\n{message}"
+            
+            new_human_msg = HumanMessage(content=input_text)
+            current_messages = messages + [new_human_msg]
+            input_payload = {"messages": current_messages}
+                
             final_response = ""
-            # Tracing isolado v1.0
-            with ls.tracing_context(project_name="calendar_agent-v3.0", enabled=True):
+            # 4. Executa o Agente (Streaming para capturar a resposta final)
+            with ls.tracing_context(project_name="calendar_agent-v5.0", enabled=True):
                 for event in self.agent.stream(
-                    input_data, 
+                    input_payload, 
                     stream_mode="values"
                 ):
-                    last_message = event["messages"][-1]
-                    if isinstance(last_message, AIMessage):
-                        final_response = last_message.text
-            
+                    last_msg = event["messages"][-1]
+                    if isinstance(last_msg, AIMessage):
+                        final_response = last_msg.text if hasattr(last_msg, 'text') else last_msg.content
+
             if not final_response:
-                return "O agente operou, mas não gerou texto de resposta."
+                return "O agente processou sua mensagem, mas não gerou uma resposta de texto."
+
+            # 5. Salva no Firestore
+            history_manager.add_message(new_human_msg)
+            history_manager.add_message(AIMessage(content=str(final_response)))
 
             return str(final_response)
 
         except Exception as e:
-            logging.error(f"Erro no Agente de Calendário invocado: {e}")
-            return f"Erro de inteligência: {e}"
-
-# Instância Singleton para uso em rotas
-calendar_graph_agent = CalendarAgent()
+            logging.error(f"[CalendarAgent] Erro crítico no invoke: {e}", exc_info=True)
+            return (
+                "Desculpe, tive um problema técnico ao processar sua solicitação. "
+                "Por favor, tente novamente em alguns instantes ou verifique sua conexão."
+            )

@@ -169,10 +169,20 @@
                 const pathParts = currentPath.split('/');
                 const langCode = pathParts[1] || 'pt_BR';
 
+                // Gerenciamento de Identificador de Sessão (Memória do Agente)
+                let sessionId = sessionStorage.getItem('chat_session_id');
+                if (!sessionId) {
+                    sessionId = crypto.randomUUID();
+                    sessionStorage.setItem('chat_session_id', sessionId);
+                }
+
                 const response = await fetch(`/${langCode}/calendar_agent/ask`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: msg })
+                    body: JSON.stringify({ 
+                        message: msg,
+                        session_id: sessionId 
+                    })
                 });
 
                 const contentType = response.headers.get("content-type");
@@ -204,11 +214,42 @@
             });
         });
 
-        // Início Automático com a Tabela de Horários
+        // Início Automático com Feedback Visual e Gatilho Silencioso
         window.addEventListener('DOMContentLoaded', () => {
-            messageInput.value = 'EdCat Agendamentos... iniciando atendimento... por favor aguarde...';
-            chatForm.dispatchEvent(new Event('submit'));
-            messageInput.value = '';
+            const initialTrigger = async () => {
+                // Exibimos a mensagem que você quer na tela como se fosse o usuário/sistema iniciando
+                addMessage("EdCat Agendamentos... iniciando atendimento... por favor aguarde...", true);
+                
+                toggleTyping(true);
+                try {
+                    const currentPath = window.location.pathname;
+                    const pathParts = currentPath.split('/');
+                    const langCode = pathParts[1] || 'pt_BR';
+
+                    let sessionId = sessionStorage.getItem('chat_session_id');
+                    if (!sessionId) {
+                        sessionId = crypto.randomUUID();
+                        sessionStorage.setItem('chat_session_id', sessionId);
+                    }
+
+                    const response = await fetch(`/${langCode}/calendar_agent/ask`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            message: "MOSTRAR_HORARIOS_INICIAIS",
+                            session_id: sessionId 
+                        })
+                    });
+
+                    const data = await response.json();
+                    toggleTyping(false);
+                    addMessage(data.response, false);
+                } catch (e) {
+                    toggleTyping(false);
+                    addMessage("Erro ao iniciar atendimento.", false);
+                }
+            };
+            initialTrigger();
         });
     </script>
 </body>

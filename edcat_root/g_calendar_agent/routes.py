@@ -3,7 +3,8 @@ import os
 from flask import Blueprint, render_template, request, jsonify, g
 from edcat_root.auth import login_required, load_user_profile
 from langchain_core.messages import HumanMessage
-from .agent import calendar_graph_agent
+from .agent import CalendarAgent
+calendar_graph_agent = CalendarAgent()
 
 # Inicialize o logger do Blueprint
 logging.basicConfig(level=logging.INFO)
@@ -32,21 +33,18 @@ def calendar_ask(lang_code):
     try:
         data = request.json
         user_message = data.get('message', '') if data else ""
+        session_id = data.get('session_id', 'test_session') # Identificador de conversa
         
         if not user_message:
             return jsonify({'response': 'Mensagem vazia.', 'status': 'error'}), 400
 
-        logging.info(f"[LangGraph Calendar] Recebido input: {user_message}")
+        logging.info(f"[LangGraph Calendar] [Session: {session_id}] Recebido input: {user_message}")
 
-        # Mensagem inicial do usuário no formato esperado pelo StateGraph
-        inputs = {"messages": [HumanMessage(content=user_message)]}
-
-        # A invocação agora retorna diretamente o texto final higienizado
-        # Se houver erro de configuração (ex: falta de segredos), o Agente retorna o erro controlado.
-        final_message = calendar_graph_agent.invoke(inputs)
+        # A invocação agora recebe diretamente o texto e a sessão
+        final_message = calendar_graph_agent.invoke(user_message, session_id=session_id)
 
         return jsonify({"response": final_message, "status": "success"})
 
     except Exception as e:
         logging.error(f"[LangGraph Calendar] Erro: {e}", exc_info=True)
-        return jsonify({'response': f"Vixe, algo deu errado: {str(e)}", 'status': 'error'}), 500
+        return jsonify({'response': f"Vixe, algo deu errado no processamento: {str(e)}", 'status': 'error'}), 500

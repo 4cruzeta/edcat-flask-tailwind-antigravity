@@ -31,19 +31,17 @@ def get_available_booking_slots_tool(days_ahead: int = 6) -> str:
         if "error" in grid:
             return grid["error"]
 
-        # Formatação pesada da Tabela Markdown solicitada pelo usuário
+        # Formatação Híbrida: Blocos para Humanos (Mobile) + Dados Invisíveis para IA
         days = list(grid.keys())
         matrix_output = []
         
-        # Agrupar colunas 3 a 3 para ficar responsivo
+        # 1. Gerar as Tabelas Visuais (Chunked)
         for chunk_idx in range(0, len(days), 3):
             column_names = days[chunk_idx:chunk_idx+3]
             matrix_output.append("|" + "|".join(column_names) + "|")
             matrix_output.append("|" + "|".join(["-" * len(c) for c in column_names]) + "|")
             
-            # Precisamos achar o tamanho máximo de linhas de um dia nesta grade
             max_slots = max([len(grid[d]) for d in column_names]) if column_names else 0
-            
             for i in range(max_slots):
                 row = []
                 for d in column_names:
@@ -51,15 +49,18 @@ def get_available_booking_slots_tool(days_ahead: int = 6) -> str:
                         iso_val = grid[d][i]["iso"]
                         hour_val = grid[d][i]["hour"]
                         human_val = HUMAN_SLOT_MAP.get(hour_val, f"{hour_val}h")
-                        # Embutindo o valor ISO em um comentário HTML invisível ao lado do número
                         row.append(f"{human_val} <!--{iso_val}-->")
                     else:
                         row.append(" ")
                 matrix_output.append("|" + "|".join(row) + "|")
-            
             matrix_output.append("\n") # Separa blocos
 
-        return "\n".join(matrix_output)
+        # 2. Gerar Metadado Invisível para a IA não se perder no histórico
+        # Isto garante que a consulta de dias como 'Terça' funcione mesmo em blocos separados
+        availability_meta = ", ".join([f"{d}: {len(grid[d])} slots" for d in days])
+        hidden_data = f"<!-- DISPONIBILIDADE_TOTAL: {availability_meta} -->"
+        
+        return "\n".join(matrix_output) + hidden_data
 
     except Exception as e:
         return f"Erro na formatação da grade: {str(e)}"
