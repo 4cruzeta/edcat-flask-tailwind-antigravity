@@ -12,6 +12,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from tzlocal import get_localzone
+from google.cloud import firestore
 
 # Project utilities
 from edcat_root.utils.get_google_secrets import get_secret
@@ -33,12 +34,12 @@ BLACKOUT_DATES = [
 # Configuração de Expediente: Dia da semana (0=Segunda, 6=Domingo) -> Lista de Horas disponíveis
 # Os horários são representados pelo início do bloco (ex: 8 = das 08h às 09h).
 WORKING_HOURS = {
-    0: [8, 9, 10, 14, 15, 16], # Segunda Feira
-    1: [8, 9, 10, 14, 15, 16], # Terça Feira
+    0: [8, 9, 10, 11, 14, 15, 16, 17], # Segunda Feira
+    1: [8, 9, 10, 11, 14, 15, 16, 17], # Terça Feira
     2: [],                     # Quarta Feira (Folga/Fechado)
-    3: [8, 9, 10, 14, 15, 16], # Quinta Feira
-    4: [8, 9, 10, 14, 15, 16], # Sexta Feira
-    5: [8, 9, 10],             # Sábado (Apenas Manhã)
+    3: [8, 9, 10, 11, 14, 15, 16, 17], # Quinta Feira
+    4: [8, 9, 10, 11, 14, 15, 16, 17], # Sexta Feira
+    5: [8, 9, 10, 11],             # Sábado (Apenas Manhã)
     6: []                      # Domingo (Fechado)
 }
 
@@ -154,8 +155,9 @@ def get_available_booking_slots(days_ahead=6) -> Dict:
         raise ValueError(f"Erro na api freebusy: {error}")
 
 def confirm_booking(name: str, phone: str, reason: str, slot_iso: str):
-    """Cria o compromisso oficial do paciente/cliente extraindo as infomações do chat."""
+    """Cria o compromisso oficial no Google Calendar e espelha no Firebase."""
     service = get_calendar_service()
+    db = firestore.Client()
     
     # 1 hr de duração fixa
     start_dt = parse_iso_datetime(slot_iso)
@@ -172,7 +174,24 @@ def confirm_booking(name: str, phone: str, reason: str, slot_iso: str):
     }
 
     try:
+        # 1. Registro no Google Calendar
         created = service.events().insert(calendarId="primary", body=event).execute()
-        return f"Sucesso! Atendimento agendado para o identificador {created.get('id')}."
+        event_id = created.get('id')
+
+        # 2. Registro no Firebase (Coleção agendamentos)
+        booking_data = {
+            "name": name,
+            "phone": phone,
+            "reason": reason,
+            "slot_iso": slot_iso,
+            "google_event_id": event_id,
+            "created_at": firestore.SERVER_TIMESTAMP,
+            "status": "confirmed"
+        }
+        db.collection("agendamentos").add(booking_data)
+        logging.info(f"[CalendarService] Agendamento {event_id} registrado no Firebase.")
+
+        return f"Sucesso! Atendimento agendado para o identificador {event_id}."
     except HttpError as error:
+        logging.error(f"Erro no agendamento: {error}")
         raise ValueError(f"Erro ao inserir reserva no calendário: {error}")

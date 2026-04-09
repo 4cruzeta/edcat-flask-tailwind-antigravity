@@ -10,6 +10,7 @@ HUMAN_SLOT_MAP = {
     8: "8h-manhã",
     9: "9h-manhã",
     10: "10h-manhã",
+    11: "11h-manhã",
     14: "2h-tarde",
     15: "3h-tarde",
     16: "4h-tarde",
@@ -75,10 +76,24 @@ class BookingArgs(BaseModel):
 @tool(args_schema=BookingArgs)
 def confirm_booking_tool(name: str, phone: str, reason: str, slot_iso: str) -> str:
     """Ferramenta que Efetiva a reserva no sistema. Só chame ela APÓS coletar Nome, Telefone e Motivo, e APÓS o cliente escolher um dos horários da tabela.
-    Passar os dados extamente como solicitados."""
+    Passar os dados exatamente como solicitados."""
     try:
+        # LOG DE DIAGNÓSTICO PARA O DESENVOLVEDOR (Visível no Terminal)
+        print(f"\n[DEBUG-TOOL] Recebido pedido de agendamento:")
+        print(f"  > Nome: {name}")
+        print(f"  > Fone: {phone}")
+        print(f"  > Motivo: {reason}")
+        print(f"  > Slot ISO (Raw): {slot_iso}")
+
+        # Validação básica de Sanidade: O Agent às vezes tenta passar o nome do horário em vez do ISO.
+        if "h" in slot_iso.lower() and "-" in slot_iso:
+             error_msg = f"ERRO: Você passou '{slot_iso}' como slot_iso. Isso é o rótulo do horário. Procure na tabela o código oculto <!--...--> ao lado desse horário e passe o valor ISO correto (ex: 2026-04-10T08:00:00Z)."
+             print(f"  [X] {error_msg}")
+             return error_msg
+
         return services.confirm_booking(name, phone, reason, slot_iso)
     except Exception as e:
+        print(f"  [X] Falha crítica: {str(e)}")
         return f"Falha crítica no agendamento. Diga ao cliente: {str(e)}"
 
 # Tools Consolidadas (Substituindo o arsenal genérico por um focado)

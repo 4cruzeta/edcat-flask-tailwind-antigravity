@@ -118,14 +118,6 @@
                 </svg>
             </button>
         </form>
-        <div class="max-w-4xl mx-auto flex gap-2 mt-3 overflow-x-auto pb-1 scrollbar-hide">
-            <button type="button"
-                class="suggestion-btn whitespace-nowrap px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm rounded-full transition-colors border border-gray-200">Ver
-                horários disponíveis</button>
-            <button type="button"
-                class="suggestion-btn whitespace-nowrap px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm rounded-full transition-colors border border-gray-200">Qual
-                meu próximo agendamento?</button>
-        </div>
     </footer>
 
     <script>
@@ -207,12 +199,6 @@
             }
         });
 
-        document.querySelectorAll('.suggestion-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                messageInput.value = btn.textContent;
-                chatForm.dispatchEvent(new Event('submit'));
-            });
-        });
 
         // Início Automático com Feedback Visual e Gatilho Silencioso
         window.addEventListener('DOMContentLoaded', () => {
