@@ -13,7 +13,9 @@ class FirestoreChatMessageHistory(BaseChatMessageHistory):
 
     def __init__(self, session_id: str, collection: str = "agent_sessions"):
         self.session_id = session_id
-        self.doc_ref = firestore.Client().collection(collection).document(session_id)
+        db = firestore.Client()
+        logging.info(f"[FirestoreHistory] Usando projeto: {db.project} | Sessão: {session_id}")
+        self.doc_ref = db.collection(collection).document(session_id)
 
     @property
     def messages(self) -> List[BaseMessage]:

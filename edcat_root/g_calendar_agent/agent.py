@@ -19,29 +19,33 @@ class CalendarAgent:
         Inicializa o Agente de Calendário seguindo o padrão moderno (Scheduler Style).
         Configura a telemetria globalmente no bootstrap.
         """
-        logging.info("Initializing Calendar Agent (Modernized)...")
-        
-        # 1. Bootstrapping de Ambiente (Substitui o .env)
-        # Seta LANGSMITH_TRACING, ENDPOINT, PROJECT e API_KEY globalmente
-        bootstrap_langsmith(project_name="calendar_agent-v5.0")
-        
         try:
-            # 2. Configuração do Modelo (Idêntico ao scheduler.py)
-            model = init_chat_model(model_name, model_provider="google_genai", temperature=0.0, output_version="v1")
+            # 1. Bootstrap de API Keys e LangSmith (Garante tracing no Cloud Run/Local)
+            bootstrap_langsmith()
+            
+            # 2. Inicialização do Modelo (Cadeia de Pensamento Ativa)
+            model = init_chat_model(model_name, model_provider="google_genai")
             
             # 3. Prompt de Sistema (Cadeia de Pensamento + Regras)
+            import datetime
+            hoje = datetime.datetime.now().strftime("%A, %d de %B de %Y")
+            # Tradução para PT-BR
+            hoje = hoje.replace("Monday", "Segunda-feira").replace("Tuesday", "Terça-feira").replace("Wednesday", "Quarta-feira").replace("Thursday", "Quinta-feira").replace("Friday", "Sexta-feira").replace("Saturday", "Sábado").replace("Sunday", "Domingo")
+            hoje = hoje.replace("April", "abril").replace("May", "maio").replace("June", "junho").replace("July", "julho").replace("August", "agosto")
+            
             system_prompt = (
+                f"Hoje é {hoje}.\n"
                 "Sua missão é agendar horários no Google Calendar.\n\n"
                 
                 "== SIGA O SEGUINTE PROCEDIMENTO: ==\n"
-                "1.Sempre que receber o comando `MOSTRAR\\_HORARIOS\\_INICIAIS`, use a ferramenta `get_available_booking_slots_tool`, para receber a Tabela atualizada. Ignore COMPLETAMENTE qualquer tabela vista no histórico no contato inicial."
-                "2. Após receber a Tabela de Horários, mostre a Tabela no formato markdown, com os dados retornados, sem acrescentar nem retirar informações."
-                "3.Logo abaixo da tabela escreva a seguinte mensagem: 'Estes são os dias e horários disponíveis para agendamento.\n\nPara agendar, por favor, mande uma única mensagem com seu nome, telefone, dia, hora e motivo do agendamento.\n\nExemplo:\nSeu Nome, 912345678, segunda, 8 horas, dor de dente\n\n'"
-                "4. Analise o histórico e localize a Tabela Markdown MAIS RECENTE e o metadado `DISPONIBILIDADE_TOTAL`.\n"
-                "5. Antes de responder, verifique se o dia mencionado possui slots com o código invisível `<!--...-->`. Identifique o valor ISO (ex: <!--2026-04-10T08:00:00Z-->) exato do slot escolhido.\n"
-                "6. Se o dia possuir slots, ele ESTÁ disponível. Nunca diga o contrário.\n\n"
-                "7. Use OBRIGATORIAMENTE a ferramenta `confirm_booking_tool` para efetivar a marcação assim que tiver o Nome, Telefone, Motivo e o ISO correto extraído da tabela.\n"
-                "8. Depois de marcar o horário, responda com a seguinte mensagem EXATA: 'Horário para [Nome], no dia [Dia] às [Hora], para cuidar de [Motivo], marcado com sucesso!\n\nAgradecemos a preferência!'"
+                "1. Sempre que receber o comando `MOSTRAR\\_HORARIOS\\_INICIAIS`, use a ferramenta `get_available_booking_slots_tool`, para receber a Tabela atualizada. Ignore COMPLETAMENTE qualquer tabela vista no histórico no contato inicial.\n"
+                "2. Após receber a Tabela de Horários, exiba-a LITERALMENTE como foi retornada pela ferramenta. NÃO remova as barras verticais (`|`), NÃO troque por espaços ou tabs, e NÃO tente reformatar. O Markdown precisa das barras `|` para funcionar.\n"
+                "3. Logo abaixo da tabela escreva a seguinte mensagem: 'Estes são os dias e horários disponíveis para agendamento.\\n\\nPara agendar, por favor, mande uma única mensagem com seu nome, telefone, dia, hora e motivo do agendamento.\\n\\nExemplo:\\nSeu Nome, 912345678, segunda, 8 horas, dor de dente\\n\\n'\n"
+                "4. Analise o histórico e localize a Tabela Markdown MAIS RECENTE e o metadado `MAPA_DE_SLOTS_UTF8`.\n"
+                "5. Antes de responder, identifique o Dia e Hora escolhidos (ex: terça-14h). Procure esse par no dicionário JSON oculto `MAPA_DE_SLOTS_UTF8` no final da mensagem da ferramenta para obter o valor ISO exato.\n"
+                "6. Se o dia e hora estiverem no mapa, eles ESTÃO disponíveis. Nunca diga o contrário.\n"
+                "7. Use OBRIGATORIAMENTE a ferramenta `confirm_booking_tool` para efetivar a marcação. Você está terminantemente PROIBIDO de dizer que marcou sem antes chamar essa ferramenta e receber o ID de sucesso dela.\n"
+                "8. Somente após a ferramenta confirmar o agendamento, responda com: 'Horário para [Nome], na [Dia] às [Hora], para cuidar de [Motivo], marcado com sucesso!\n\nAgradecemos a preferência!'"
             )
             # 4. Criação do Agente com lista de ferramentas (Padrão scheduler.py)
             self.agent = create_agent(model, CALENDAR_TOOLS, system_prompt=system_prompt)
@@ -67,9 +71,10 @@ class CalendarAgent:
                 
             final_response = ""
             
-            # Executa com tracing (As variáveis individuais já estão no ambiente pelo bootstrap)
+            # Executa com tracing e prints de auditoria
             for event in self.agent.stream(input_payload, stream_mode="values"):
                 last_msg = event["messages"][-1]
+                                
                 if isinstance(last_msg, AIMessage):
                     final_response = last_msg.text if hasattr(last_msg, 'text') else last_msg.content
 
@@ -79,14 +84,15 @@ class CalendarAgent:
             # Salva no Firestore se o atendimento não acabou
             # Mas se acabou com sucesso, limpamos tudo para evitar cache!
             if "marcado com sucesso" in str(final_response).lower():
-                logging.info(f"[CalendarAgent] Agendamento concluído. Limpando sessão: {session_id}")
                 history_manager.clear()
             else:
-                history_manager.add_message(new_human_msg)
-                history_manager.add_message(AIMessage(content=str(final_response)))
+                try:
+                    history_manager.add_message(new_human_msg)
+                    history_manager.add_message(AIMessage(content=str(final_response)))
+                except Exception as hist_err:
+                    print(f"[SESSÃO] ERRO CRÍTICO ao gravar no Firestore: {hist_err}")
 
             return str(final_response)
-
         except Exception as e:
-            logging.error(f"[CalendarAgent] Erro crítico no invoke: {e}", exc_info=True)
+            logging.error(f"[CalendarAgent] Erro na invocação: {e}")
             return "Desculpe, tive um problema técnico. Por favor, tente novamente em instantes."

@@ -9,26 +9,24 @@ def parse_iso_datetime(date_string: str) -> datetime.datetime:
     if not date_string:
         raise ValueError("Empty date string provided to parse_iso_datetime.")
 
-    # Aumentando a robustez: Remove tags de comentário HTML caso o agente tenha capturado o valor bruto
-    # Ex: "<!--2026-04-07T13:00:00Z-->" -> "2026-04-07T13:00:00Z"
-    clean_date = date_string.strip().replace('<!--', '').replace('-->', '')
-
-    # 1. Standardize 'Z' (Zulu time) for older Python compatibility (even though 3.11+ supports it)
-    # and to ensure a uniform format.
-    clean_date = clean_date.replace('Z', '+00:00')
+    # 1. Limpeza de ruídos de formatação
+    clean_date = date_string.strip()
+    clean_date = clean_date.replace('<!--', '').replace('-->', '')
+    clean_date = clean_date.replace(' UTC', '').replace('Z', '')
+    
+    # 2. Normaliza espaço entre Data e Hora
+    if ' ' in clean_date:
+        clean_date = clean_date.replace(' ', 'T')
 
     try:
-        # 2. Use the built-in fromisoformat
+        # Tenta o parsing direto do que sobrar
+        # Se for YYYY-MM-DDTHH:MM:SS, teremos um Naive Datetime perfeito.
         return datetime.datetime.fromisoformat(clean_date)
-    except ValueError as e:
-        # 3. Fallback for potential formatting quirks (like non-standard separators)
-        logging.warning(f"Standard fromisoformat failed for '{date_string}', trying secondary parsing. Error: {e}")
+    except Exception as e:
+        # Fallback de emergência (pega os primeiros 19 caracteres: YYYY-MM-DDTHH:MM:SS)
+        logging.warning(f"Standard fromisoformat failed for '{date_string}', using fallback. Error: {e}")
         try:
-            # Simple fallback for most common date-time only strings
-            # If it's just 'YYYY-MM-DD HH:MM:SS', replace space with T
-            if ' ' in clean_date:
-                clean_date = clean_date.replace(' ', 'T')
-            return datetime.datetime.fromisoformat(clean_date)
+            return datetime.datetime.fromisoformat(clean_date[:19])
         except Exception as final_err:
-            logging.error(f"Failed to parse date string '{date_string}': {final_err}")
+            logging.error(f"Critical failure parsing date '{date_string}': {final_err}")
             raise ValueError(f"Could not parse ISO datetime: {date_string}") from final_err

@@ -36,11 +36,12 @@ def get_available_booking_slots_tool(days_ahead: int = 6) -> str:
         days = list(grid.keys())
         matrix_output = []
         
-        # 1. Gerar as Tabelas Visuais (Chunked)
+        # 1. Gerar as Tabelas Visuais (Chunked) e o Mapa Técnico
+        slot_map = {}
         for chunk_idx in range(0, len(days), 3):
             column_names = days[chunk_idx:chunk_idx+3]
-            matrix_output.append("|" + "|".join(column_names) + "|")
-            matrix_output.append("|" + "|".join(["-" * len(c) for c in column_names]) + "|")
+            matrix_output.append("| " + " | ".join(column_names) + " |")
+            matrix_output.append("|" + "|".join([" :--- " for _ in column_names]) + "|")
             
             max_slots = max([len(grid[d]) for d in column_names]) if column_names else 0
             for i in range(max_slots):
@@ -50,18 +51,25 @@ def get_available_booking_slots_tool(days_ahead: int = 6) -> str:
                         iso_val = grid[d][i]["iso"]
                         hour_val = grid[d][i]["hour"]
                         human_val = HUMAN_SLOT_MAP.get(hour_val, f"{hour_val}h")
-                        row.append(f"{human_val} <!--{iso_val}-->")
+                        
+                        # Label único para o mapa (Ex: terça-14-14h)
+                        slot_key = f"{d}-{human_val}".lower()
+                        slot_map[slot_key] = iso_val
+                        
+                        # Na tabela visual, mostramos apenas o horário (Limpo!)
+                        row.append(f"{human_val}")
                     else:
                         row.append(" ")
-                matrix_output.append("|" + "|".join(row) + "|")
+                matrix_output.append("| " + " | ".join(row) + " |")
             matrix_output.append("\n") # Separa blocos
 
-        # 2. Gerar Metadado Invisível para a IA não se perder no histórico
-        # Isto garante que a consulta de dias como 'Terça' funcione mesmo em blocos separados
+        # 2. Gerar Metadado Oculto em formato JSON para a IA ler sem erro
+        import json
+        hidden_map = f"<!-- MAPA_DE_SLOTS_UTF8: {json.dumps(slot_map)} -->"
         availability_meta = ", ".join([f"{d}: {len(grid[d])} slots" for d in days])
         hidden_data = f"<!-- DISPONIBILIDADE_TOTAL: {availability_meta} -->"
         
-        return "\n".join(matrix_output) + hidden_data
+        return "\n".join(matrix_output) + "\n" + hidden_map + "\n" + hidden_data
 
     except Exception as e:
         return f"Erro na formatação da grade: {str(e)}"
@@ -78,22 +86,13 @@ def confirm_booking_tool(name: str, phone: str, reason: str, slot_iso: str) -> s
     """Ferramenta que Efetiva a reserva no sistema. Só chame ela APÓS coletar Nome, Telefone e Motivo, e APÓS o cliente escolher um dos horários da tabela.
     Passar os dados exatamente como solicitados."""
     try:
-        # LOG DE DIAGNÓSTICO PARA O DESENVOLVEDOR (Visível no Terminal)
-        print(f"\n[DEBUG-TOOL] Recebido pedido de agendamento:")
-        print(f"  > Nome: {name}")
-        print(f"  > Fone: {phone}")
-        print(f"  > Motivo: {reason}")
-        print(f"  > Slot ISO (Raw): {slot_iso}")
-
-        # Validação básica de Sanidade: O Agent às vezes tenta passar o nome do horário em vez do ISO.
+        # Validação de Sanidade: O Agent às vezes tenta passar o nome do horário (ex: '8h-manhã') em vez do ISO.
+        # Esta regra é VITAL para a auto-correção da IA.
         if "h" in slot_iso.lower() and "-" in slot_iso:
-             error_msg = f"ERRO: Você passou '{slot_iso}' como slot_iso. Isso é o rótulo do horário. Procure na tabela o código oculto <!--...--> ao lado desse horário e passe o valor ISO correto (ex: 2026-04-10T08:00:00Z)."
-             print(f"  [X] {error_msg}")
-             return error_msg
+             return f"ERRO: Você passou '{slot_iso}' como slot_iso. Isso é apenas um rótulo. Procure na tabela o código oculto <!--...--> ao lado do horário escolhido e passe o valor ISO correto (ex: 2026-04-10T08:00:00Z)."
 
         return services.confirm_booking(name, phone, reason, slot_iso)
     except Exception as e:
-        print(f"  [X] Falha crítica: {str(e)}")
         return f"Falha crítica no agendamento. Diga ao cliente: {str(e)}"
 
 # Tools Consolidadas (Substituindo o arsenal genérico por um focado)

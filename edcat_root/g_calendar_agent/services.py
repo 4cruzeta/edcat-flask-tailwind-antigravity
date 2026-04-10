@@ -101,9 +101,9 @@ def get_available_booking_slots(days_ahead=6) -> Dict:
         allowed_hours = WORKING_HOURS[week_day]
         for hour in allowed_hours:
             dt = business_tz.localize(datetime.datetime.combine(current_date, datetime.time(hour, 0)))
-            dt_iso = dt.astimezone(pytz.UTC).isoformat().replace("+00:00", "Z")
-            
             if dt > now: 
+                # Geramos o ISO sem fuso (Naive) para a IA não se confundir com cálculos de UTC
+                dt_iso = dt.replace(tzinfo=None).isoformat()
                 theoretical_slots[dt_iso] = {
                     "day_label": current_date.strftime('%A-%d').replace('Monday', 'segunda').replace('Tuesday', 'terça').replace('Thursday', 'quinta').replace('Friday', 'sexta').replace('Saturday', 'sábado'),
                     "hour": hour,
@@ -138,8 +138,15 @@ def get_available_booking_slots(days_ahead=6) -> Dict:
             for busy in busy_periods:
                 b_start = parse_iso_datetime(busy['start'])
                 b_end = parse_iso_datetime(busy['end'])
+                
+                # Se o helper simplificado arrancar o fuso, garantimos que eles voltem a ser UTC para a comparação
+                if b_start.tzinfo is None:
+                    b_start = pytz.UTC.localize(b_start)
+                if b_end.tzinfo is None:
+                    b_end = pytz.UTC.localize(b_end)
+                    
                 # Lógica de intersecção básica de tempo
-                if max(slot_start, b_start) < min(slot_end, b_end):
+                if (slot_start < b_end) and (slot_end > b_start):
                     is_busy = True
                     break
                     
@@ -161,6 +168,10 @@ def confirm_booking(name: str, phone: str, reason: str, slot_iso: str):
     
     # 1 hr de duração fixa
     start_dt = parse_iso_datetime(slot_iso)
+    # Se a data vier "Naive" (sem fuso), assumimos que é o fuso local da clínica
+    if start_dt.tzinfo is None:
+        start_dt = pytz.timezone(BUSINESS_TIMEZONE).localize(start_dt)
+        
     end_dt = start_dt + datetime.timedelta(hours=1)
     
     # O Padrão de Nomenclatura Estrita do Consultório
