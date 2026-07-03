@@ -21,7 +21,8 @@ def diagnose():
         api_key = get_secret("GOOGLE_API_KEY")
         if api_key:
             print(f"   [OK] GOOGLE_API_KEY recuperada (inicia com {api_key[:5]}...)")
-            os.environ["GOOGLE_API_KEY"] = api_key
+            os.environ["GEMINI_API_KEY"] = api_key
+            os.environ.pop("GOOGLE_API_KEY", None)
         else:
             print("   [ERRO] GOOGLE_API_KEY não encontrada no Secret Manager.")
     except Exception as e:

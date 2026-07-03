@@ -167,9 +167,17 @@ def confirm_booking(name: str, phone: str, reason: str, slot_iso: str):
     db = firestore.Client()
     
     # 1 hr de duração fixa
-    start_dt = parse_iso_datetime(slot_iso)
-    # Se a data vier "Naive" (sem fuso), assumimos que é o fuso local da clínica
+    # Limpeza defensiva: Garante que a string seja tratada como Naive (Local)
+    # mesmo que a IA adicione um 'Z' por engano.
+    clean_iso = slot_iso.replace("Z", "").split("+")[0]
+    start_dt = parse_iso_datetime(clean_iso)
+    
+    # Força a localização para o fuso da clínica
     if start_dt.tzinfo is None:
+        start_dt = pytz.timezone(BUSINESS_TIMEZONE).localize(start_dt)
+    else:
+        # Se veio com fuso, convertemos para o da clínica preservando a hora nominal
+        start_dt = start_dt.replace(tzinfo=None)
         start_dt = pytz.timezone(BUSINESS_TIMEZONE).localize(start_dt)
         
     end_dt = start_dt + datetime.timedelta(hours=1)

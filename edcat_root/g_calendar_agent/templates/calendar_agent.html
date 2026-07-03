@@ -1,243 +1,291 @@
-<!DOCTYPE html>
-<html lang="{{ lang_code }}">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EdCat Calendar Agent (LangGraph)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <style>
-        .chat-bubble-user {
-            @apply bg-blue-600 text-white p-3 rounded-2xl rounded-tr-sm w-fit max-w-[80%] self-end shadow-sm;
-        }
+{% block title %}{{ _('Agendamento Inteligente') }} - EdCat V2{% endblock %}
 
-        .chat-bubble-agent {
-            @apply bg-gray-100 text-gray-800 p-3 rounded-2xl rounded-tl-sm w-fit max-w-[80%] self-start shadow-sm whitespace-pre-wrap;
-        }
+{% block extra_head %}
+<!-- Bibliotecas Frontend Adicionais -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+    /* Estilos personalizados para renderizar as tabelas Markdown da IA */
+    .markdown-content table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 12px;
+        margin-bottom: 12px;
+        font-size: 0.85rem;
+    }
 
-        /* Markdown Table Styling */
-        .chat-bubble-agent table {
-            border-collapse: collapse;
-            width: 100%;
-            margin-top: 8px;
-            margin-bottom: 8px;
-            font-size: 0.875rem;
-        }
+    .markdown-content th {
+        background-color: #f3f4f6;
+        padding: 8px 12px;
+        text-align: center;
+        font-weight: 600;
+        border: 1px solid #e5e7eb;
+        color: #374151;
+    }
 
-        .chat-bubble-agent th {
-            background-color: #e5e7eb;
-            padding: 6px 12px;
-            text-align: left;
-            font-weight: 600;
-            border: 1px solid #d1d5db;
-        }
+    .dark .markdown-content th {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+    }
 
-        .chat-bubble-agent td {
-            padding: 6px 12px;
-            border: 1px solid #d1d5db;
-        }
+    .markdown-content td {
+        padding: 8px 12px;
+        text-align: center;
+        border: 1px solid #e5e7eb;
+        color: #4b5563;
+    }
 
-        .typing {
-            display: none;
-        }
+    .dark .markdown-content td {
+        border-color: #4b5563;
+        color: #d1d5db;
+    }
 
-        .typing span {
-            animation: blink 1.4s infinite both;
-            height: 6px;
-            width: 6px;
-            background: #6b7280;
-            border-radius: 50%;
-            display: inline-block;
-            margin: 0 1px;
-        }
+    /* Ocultar tags de comentários HTML na interface */
+    .markdown-content comment {
+        display: none;
+    }
+</style>
+{% endblock %}
 
-        .typing span:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-
-        .typing span:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-
-        @keyframes blink {
-
-            0%,
-            80%,
-            100% {
-                opacity: 0;
-            }
-
-            40% {
-                opacity: 1;
-            }
-        }
-    </style>
-</head>
-
-<body class="bg-gray-50 h-screen flex flex-col font-sans">
-
-    <!-- Header -->
-    <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm z-10">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xl">📅
-            </div>
+{% block content %}
+<div class="h-[calc(100vh-140px)] flex bg-white border border-gray-200 rounded-2xl shadow dark:bg-gray-800 dark:border-gray-700 overflow-hidden">
+    
+    <!-- Painel Lateral: Informações da Clínica -->
+    <div class="hidden md:flex flex-col w-80 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex-shrink-0">
+        <div class="p-5 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3">
+            <span class="text-2xl">📅</span>
             <div>
-                <h1 class="font-bold text-gray-800 text-lg leading-tight">Agente de Agendamento</h1>
-                <p class="text-xs text-green-600 font-medium">● Online (LangGraph)</p>
+                <h2 class="text-lg font-bold text-gray-800 dark:text-white">{{ _('Agenda da Clínica') }}</h2>
+                <p class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">● {{ _('Reserva Conectada') }}</p>
             </div>
         </div>
-        <div class="text-xs text-gray-400">EdCat V2 AI</div>
-    </header>
+        
+        <div class="flex-1 p-5 space-y-6 overflow-y-auto">
+            <!-- Horário de Funcionamento -->
+            <div>
+                <h3 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">{{ _('Horário de Expediente') }}</h3>
+                <ul class="text-xs text-gray-600 dark:text-gray-400 space-y-1.5">
+                    <li class="flex justify-between"><span>Seg, Ter, Qui, Sex:</span><span class="font-semibold">08:00 - 18:00</span></li>
+                    <li class="flex justify-between"><span>Sábado:</span><span class="font-semibold">08:00 - 12:00</span></li>
+                    <li class="flex justify-between text-red-500"><span>Quarta & Domingo:</span><span class="font-semibold">{{ _('Fechado') }}</span></li>
+                </ul>
+            </div>
+            
+            <!-- Integração Ativa -->
+            <div class="p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 rounded-xl">
+                <h4 class="text-xs font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider mb-1">Google Calendar Integration</h4>
+                <p class="text-xs text-emerald-700 dark:text-emerald-500 leading-relaxed">
+                    {{ _('Os horários exibidos são calculados em tempo real consultando o Google Calendar para evitar colisões e garantir o expediente correto.') }}
+                </p>
+            </div>
 
-    <!-- Chat Area -->
-    <main class="flex-1 overflow-y-auto p-4 md:p-6" id="chat-container">
-        <div class="flex flex-col gap-4" id="chat-messages">
-            <!-- Mensagens dinâmicas -->
+            <!-- Notas de Uso -->
+            <div>
+                <h3 class="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">{{ _('Instruções') }}</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                    {{ _('Para agendar, basta escolher um horário livre na tabela ao lado e informar ao assistente seu Nome, Telefone e o Motivo da consulta.') }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Canal Principal do Chat -->
+    <div class="flex-1 flex flex-col bg-white dark:bg-gray-900">
+        <!-- Cabeçalho Chat -->
+        <div class="p-4 bg-gray-50/80 border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700 flex items-center justify-between shadow-sm z-10 w-full">
+            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                {{ _('Conversando com assistente de agendamento') }}
+            </span>
+            <span class="text-xs text-gray-400 dark:text-gray-500">LangGraph Stateless Harness v2</span>
         </div>
 
-        <!-- Typing Indicator -->
-        <div class="typing mt-4 items-center self-start bg-gray-100 px-4 py-3 rounded-2xl rounded-tl-sm w-fit shadow-sm"
-            id="typing-indicator">
-            <span class="block"></span><span class="block"></span><span class="block"></span>
+        <!-- Janela de Mensagens -->
+        <div id="chat-window" class="flex-1 p-4 md:p-6 overflow-y-auto space-y-6 scroll-smooth bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/10 to-white dark:from-gray-900 dark:to-gray-900 border-b border-gray-100 dark:border-gray-800">
+            <!-- As mensagens serão inseridas via Javascript -->
         </div>
-    </main>
 
-    <!-- Input Area -->
-    <footer class="bg-white border-t border-gray-200 p-4">
-        <form id="chat-form" class="max-w-4xl mx-auto flex gap-2">
-            <input type="text" id="message-input" autocomplete="off"
-                class="flex-1 bg-gray-100 border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-800 rounded-full px-5 py-3 outline-none transition-all"
-                placeholder="Ex: 'Quero marcar um checkup na segunda às 10h'...">
-            <button type="submit"
-                class="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
-                    stroke="currentColor" class="w-5 h-5 translate-x-0.5">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                </svg>
-            </button>
-        </form>
-    </footer>
+        <!-- Formulário de Entrada -->
+        <div class="p-4 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex-none pb-safe">
+            <form id="chat-form" class="flex items-center max-w-4xl mx-auto space-x-3 relative">
+                <div class="relative w-full">
+                    <input type="text" id="message-input" name="message" placeholder="{{ _('Ex: Quero marcar uma consulta para segunda de manhã...') }}" autocomplete="off" required
+                        class="block w-full p-4 pl-4 pr-12 text-sm text-gray-900 border border-gray-300 rounded-xl bg-gray-50 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white shadow-inner">
+                </div>
+                <button type="submit" id="submit-btn" class="inline-flex items-center justify-center px-5 py-4 text-sm font-medium text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 focus:ring-4 focus:ring-emerald-300 dark:focus:ring-emerald-800 transition-all shadow-md flex-shrink-0 h-full">
+                    <span class="hidden sm:inline mr-2">{{ _('Enviar') }}</span>
+                    <svg class="w-4 h-4 transform rotate-90" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 18 20">
+                        <path d="m17.914 18.594-8-18a1 1 0 0 0-1.828 0l-8 18a1 1 0 0 0 1.157 1.376L8 18.281V9a1 1 0 0 1 2 0v9.281l6.758 1.689a1 1 0 0 0 1.156-1.376Z"/>
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
 
-    <script>
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
         const chatForm = document.getElementById('chat-form');
         const messageInput = document.getElementById('message-input');
-        const chatMessages = document.getElementById('chat-messages');
-        const typingIndicator = document.getElementById('typing-indicator');
-        const container = document.getElementById('chat-container');
+        const chatWindow = document.getElementById('chat-window');
+        const submitBtn = document.getElementById('submit-btn');
 
-        const addMessage = (text, isUser) => {
-            const div = document.createElement('div');
-            div.className = isUser ? 'chat-bubble-user' : 'chat-bubble-agent';
-            if (isUser) {
-                div.textContent = text;
-            } else {
-                // Remove formatting constraints that cause markdown block glitches
-                let cleanText = text.replace(/```markdown/g, '').replace(/```/g, '');
-                div.innerHTML = marked.parse(cleanText, { breaks: true });
-            }
-            chatMessages.appendChild(div);
-            container.scrollTop = container.scrollHeight;
-        };
+        // Determina o idioma da URL
+        const currentPath = window.location.pathname;
+        const pathParts = currentPath.split('/');
+        const langCode = pathParts[1] || 'pt_BR';
 
-        const toggleTyping = (show) => {
-            typingIndicator.style.display = show ? 'flex' : 'none';
-            container.scrollTop = container.scrollHeight;
-        };
+        // Obtém ou cria a sessão única do chat
+        let sessionId = sessionStorage.getItem('chat_session_id');
+        if (!sessionId) {
+            sessionId = crypto.randomUUID();
+            sessionStorage.setItem('chat_session_id', sessionId);
+        }
 
-        chatForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const msg = messageInput.value.trim();
-            if (!msg) return;
+        // Função de envio — fluxo SÍNCRONO (sem polling)
+        chatForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const userMessage = messageInput.value.trim();
+            if (!userMessage) return;
 
-            addMessage(msg, true);
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            appendMessage(userMessage, 'user');
             messageInput.value = '';
-            toggleTyping(true);
+
+            const loadingId = 'loading-' + Date.now();
+            appendLoading(loadingId);
 
             try {
-                // Obtenha o idioma atual da URL (ex: /pt_BR/calendar_agent -> pt_BR)
-                const currentPath = window.location.pathname;
-                const pathParts = currentPath.split('/');
-                const langCode = pathParts[1] || 'pt_BR';
-
-                // Gerenciamento de Identificador de Sessão (Memória do Agente)
-                let sessionId = sessionStorage.getItem('chat_session_id');
-                if (!sessionId) {
-                    sessionId = crypto.randomUUID();
-                    sessionStorage.setItem('chat_session_id', sessionId);
-                }
-
                 const response = await fetch(`/${langCode}/calendar_agent/ask`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        message: msg,
+                        message: userMessage,
                         session_id: sessionId 
                     })
                 });
 
-                const contentType = response.headers.get("content-type");
-                let textResponse = "Erro inesperado do servidor.";
+                const data = await response.json();
+                removeLoading(loadingId);
 
-                if (contentType && contentType.includes("application/json")) {
-                    const data = await response.json();
-                    textResponse = data.response;
+                if (data.status === 'completed' || data.response) {
+                    appendMessage(data.response || "Resposta vazia.", 'assistant');
                 } else {
-                    const rawBody = await response.text();
-                    textResponse = "O servidor retornou um HTML/Erro de rota em vez de JSON. Verifique a URL do endpoint.";
-                    console.error("RAW Response:", rawBody);
+                    appendMessage(data.response || "Erro no processamento.", 'assistant', true);
                 }
 
-                toggleTyping(false);
-                addMessage(textResponse, false);
-
             } catch (error) {
+                removeLoading(loadingId);
                 console.error(error);
-                toggleTyping(false);
-                addMessage('Ops, falha de conexão. Verifique se o backend e a API do Google estão online.', false);
+                appendMessage('Falha ao se conectar com o servidor.', 'assistant', true);
+            } finally {
+                enableSubmit();
             }
         });
 
+        const enableSubmit = () => {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            messageInput.focus();
+        };
 
-        // Início Automático com Feedback Visual e Gatilho Silencioso
-        window.addEventListener('DOMContentLoaded', () => {
-            const initialTrigger = async () => {
-                // Exibimos a mensagem que você quer na tela como se fosse o usuário/sistema iniciando
-                addMessage("EdCat Agendamentos... iniciando atendimento... por favor aguarde...", true);
-                
-                toggleTyping(true);
-                try {
-                    const currentPath = window.location.pathname;
-                    const pathParts = currentPath.split('/');
-                    const langCode = pathParts[1] || 'pt_BR';
+        // Renderizadores visuais de Mensagem
+        function appendMessage(text, sender, isError=false) {
+            const wrapper = document.createElement('div');
+            wrapper.className = sender === 'user' ? 'flex justify-end' : 'flex justify-start';
 
-                    let sessionId = sessionStorage.getItem('chat_session_id');
-                    if (!sessionId) {
-                        sessionId = crypto.randomUUID();
-                        sessionStorage.setItem('chat_session_id', sessionId);
-                    }
+            const innerHtml = sender === 'user' 
+                ? `
+                <div class="flex flex-col items-end gap-1 max-w-[85%] md:max-w-2xl">
+                    <div class="p-4 rounded-2xl rounded-tr-sm bg-emerald-600 text-white shadow-md">
+                        <p class="whitespace-pre-wrap text-sm leading-relaxed">${escapeHTML(text)}</p>
+                    </div>
+                </div>
+                `
+                : `
+                <div class="flex flex-col gap-1 max-w-[85%] md:max-w-2xl">
+                    <span class="text-xs text-gray-500 dark:text-gray-400 font-semibold ml-1">Assistente de Agenda</span>
+                    <div class="p-4 rounded-2xl rounded-tl-sm ${isError ? 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300' : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700'} shadow-sm markdown-content">
+                        <div class="text-sm leading-relaxed">${renderMarkdown(text)}</div>
+                    </div>
+                </div>
+                `;
 
-                    const response = await fetch(`/${langCode}/calendar_agent/ask`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            message: "MOSTRAR_HORARIOS_INICIAIS",
-                            session_id: sessionId 
-                        })
-                    });
+            wrapper.innerHTML = innerHtml;
+            chatWindow.appendChild(wrapper);
+            autoScroll();
+        }
 
-                    const data = await response.json();
-                    toggleTyping(false);
-                    addMessage(data.response, false);
-                } catch (e) {
-                    toggleTyping(false);
-                    addMessage("Erro ao iniciar atendimento.", false);
-                }
-            };
-            initialTrigger();
-        });
-    </script>
-</body>
+        function appendLoading(id) {
+            const wrapper = document.createElement('div');
+            wrapper.id = id;
+            wrapper.className = 'flex justify-start';
+            wrapper.innerHTML = `
+                <div class="flex flex-col gap-1 max-w-[85%]">
+                    <div class="px-4 py-3 rounded-2xl rounded-tl-sm bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 flex space-x-2 items-center h-12">
+                        <div class="w-2 h-2 rounded-full bg-emerald-500 animate-bounce"></div>
+                        <div class="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style="animation-delay: 0.2s"></div>
+                        <div class="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style="animation-delay: 0.4s"></div>
+                    </div>
+                </div>
+            `;
+            chatWindow.appendChild(wrapper);
+            autoScroll();
+        }
 
-</html>
+        function removeLoading(id) {
+            const loader = document.getElementById(id);
+            if (loader) loader.remove();
+        }
+
+        function autoScroll() {
+            chatWindow.scrollTo({ top: chatWindow.scrollHeight, behavior: 'smooth' });
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        function renderMarkdown(text) {
+            // Remove marcadores crus de código markdown extras se existirem
+            let cleanText = text.replace(/```markdown/g, '').replace(/```/g, '');
+            // Utiliza o parser marked.js
+            return marked.parse(cleanText, { breaks: true });
+        }
+
+        // Gatilho inicial automático para exibir horários de imediato
+        const initialTrigger = async () => {
+            appendMessage("Consultando horários disponíveis...", 'assistant');
+            const loadingId = 'loading-initial';
+            appendLoading(loadingId);
+
+            try {
+                const response = await fetch(`/${langCode}/calendar_agent/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        message: "MOSTRAR_HORARIOS_INICIAIS",
+                        session_id: sessionId 
+                    })
+                });
+
+                const data = await response.json();
+                removeLoading(loadingId);
+                appendMessage(data.response || "Erro ao consultar horários.", 'assistant');
+            } catch (e) {
+                removeLoading(loadingId);
+                appendMessage("Erro ao consultar horários iniciais.", 'assistant', true);
+            }
+        };
+
+        initialTrigger();
+    });
+</script>
+{% endblock %}

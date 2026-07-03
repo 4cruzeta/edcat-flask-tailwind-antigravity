@@ -2,97 +2,85 @@ import os
 import logging
 from typing import List, Dict, Optional
 
-# LangChain components
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langchain.chat_models import init_chat_model
-from langchain.agents import create_agent
+# Deep Agents & LangChain
+from deepagents import create_deep_agent
+from langchain_core.messages import HumanMessage, AIMessage
+from langsmith import tracing_context
+from langgraph.checkpoint.memory import MemorySaver
 
 # Project utilities
 from .tools import CALENDAR_TOOLS
-from .firestore_history import FirestoreChatMessageHistory
+from .harness import register_calendar_harness
 from edcat_root.utils.env_bootstrap import bootstrap_langsmith
-import edcat_root.utils.langsmith_config as ls
+
+# Registra o perfil do Harness para este blueprint
+register_calendar_harness()
 
 class CalendarAgent:
-    def __init__(self, model_name: str = "gemini-2.5-flash-lite"):
+    def __init__(self, model_name: str = "google_genai:gemini-3.5-flash"):
         """
-        Inicializa o Agente de Calendário seguindo o padrão moderno (Scheduler Style).
-        Configura a telemetria globalmente no bootstrap.
+        Inicializa o Agente de Calendário usando o Harness e o State em memória (MemorySaver).
+        Sem envolvimento de banco de dados durante a conversa — somente RAM.
         """
         try:
-            # 1. Bootstrap de API Keys e LangSmith (Garante tracing no Cloud Run/Local)
             bootstrap_langsmith()
             
-            # 2. Inicialização do Modelo (Cadeia de Pensamento Ativa)
-            model = init_chat_model(model_name, model_provider="google_genai")
+            # Inicializa o Checkpointer de Estado (Persistência em RAM — sem latência de rede)
+            self.checkpointer = MemorySaver()
             
-            # 3. Prompt de Sistema (Cadeia de Pensamento + Regras)
-            import datetime
-            hoje = datetime.datetime.now().strftime("%A, %d de %B de %Y")
-            # Tradução para PT-BR
-            hoje = hoje.replace("Monday", "Segunda-feira").replace("Tuesday", "Terça-feira").replace("Wednesday", "Quarta-feira").replace("Thursday", "Quinta-feira").replace("Friday", "Sexta-feira").replace("Saturday", "Sábado").replace("Sunday", "Domingo")
-            hoje = hoje.replace("April", "abril").replace("May", "maio").replace("June", "junho").replace("July", "julho").replace("August", "agosto")
-            
-            system_prompt = (
-                f"Hoje é {hoje}.\n"
-                "Sua missão é agendar horários no Google Calendar.\n\n"
-                
-                "== SIGA O SEGUINTE PROCEDIMENTO: ==\n"
-                "1. Sempre que receber o comando `MOSTRAR\\_HORARIOS\\_INICIAIS`, use a ferramenta `get_available_booking_slots_tool`, para receber a Tabela atualizada. Ignore COMPLETAMENTE qualquer tabela vista no histórico no contato inicial.\n"
-                "2. Após receber a Tabela de Horários, exiba-a LITERALMENTE como foi retornada pela ferramenta. NÃO remova as barras verticais (`|`), NÃO troque por espaços ou tabs, e NÃO tente reformatar. O Markdown precisa das barras `|` para funcionar.\n"
-                "3. Logo abaixo da tabela escreva a seguinte mensagem: 'Estes são os dias e horários disponíveis para agendamento.\\n\\nPara agendar, por favor, mande uma única mensagem com seu nome, telefone, dia, hora e motivo do agendamento.\\n\\nExemplo:\\nSeu Nome, 912345678, segunda, 8 horas, dor de dente\\n\\n'\n"
-                "4. Analise o histórico e localize a Tabela Markdown MAIS RECENTE e o metadado `MAPA_DE_SLOTS_UTF8`.\n"
-                "5. Antes de responder, identifique o Dia e Hora escolhidos (ex: terça-14h). Procure esse par no dicionário JSON oculto `MAPA_DE_SLOTS_UTF8` no final da mensagem da ferramenta para obter o valor ISO exato.\n"
-                "6. Se o dia e hora estiverem no mapa, eles ESTÃO disponíveis. Nunca diga o contrário.\n"
-                "7. Use OBRIGATORIAMENTE a ferramenta `confirm_booking_tool` para efetivar a marcação. Você está terminantemente PROIBIDO de dizer que marcou sem antes chamar essa ferramenta e receber o ID de sucesso dela.\n"
-                "8. Somente após a ferramenta confirmar o agendamento, responda com: 'Horário para [Nome], na [Dia] às [Hora], para cuidar de [Motivo], marcado com sucesso!\n\nAgradecemos a preferência!'"
+            # Criação do Agente via Harness acoplado ao Checkpointer
+            self.agent = create_deep_agent(
+                model=model_name,
+                tools=CALENDAR_TOOLS,
+                checkpointer=self.checkpointer
             )
-            # 4. Criação do Agente com lista de ferramentas (Padrão scheduler.py)
-            self.agent = create_agent(model, CALENDAR_TOOLS, system_prompt=system_prompt)
+            logging.info(f"[CalendarAgent] Harness inicializado com Memória de Estado (MemorySaver).")
             
         except Exception as e:
             logging.error(f"[CalendarAgent] Erro na inicialização: {e}")
             raise
 
     def invoke(self, message: str, session_id: str, metadata: Optional[Dict] = None) -> str:
-        """Executa um turno do agente com gestão de memória Firestore."""
+        """
+        Executa um turno do agente usando o LangGraph State.
+        Retorna a resposta final como texto limpo.
+        """
         try:
-            history_manager = FirestoreChatMessageHistory(session_id)
-            messages = history_manager.messages
-            
-            # Prepara a nova mensagem
+            # Prepara o input conforme o State do LangGraph
             input_text = message
             if metadata and "phone" in metadata:
-                input_text = f"[SISTEMA: Usuário identificado via WhatsApp com telefone {metadata['phone']}]\n{message}"
+                input_text = f"[SISTEMA: Usuário WhatsApp {metadata['phone']}]\n{input_text}"
             
-            new_human_msg = HumanMessage(content=input_text)
-            current_messages = messages + [new_human_msg]
-            input_payload = {"messages": current_messages}
+            # Configuração da Thread (Chave do State)
+            config = {"configurable": {"thread_id": session_id}}
+            
+            with tracing_context(project_name="edcat-v2-calendar"):
+                # No LangGraph, passamos apenas a nova mensagem. 
+                # O Checkpointer carrega o histórico automaticamente.
+                input_payload = {"messages": [HumanMessage(content=input_text)]}
                 
-            final_response = ""
-            
-            # Executa com tracing e prints de auditoria
-            for event in self.agent.stream(input_payload, stream_mode="values"):
-                last_msg = event["messages"][-1]
-                                
-                if isinstance(last_msg, AIMessage):
-                    final_response = last_msg.text if hasattr(last_msg, 'text') else last_msg.content
+                logging.info(f"[CalendarAgent] [State] Invocando LangGraph. Thread: {session_id} | MSG: {input_text[:30]}...")
+                
+                # Execução do Agente com State
+                result = self.agent.invoke(input_payload, config=config)
+                
+                logging.info(f"[CalendarAgent] [State] Resposta recebida da IA.")
+                
+                # Extração da resposta final do Estado
+                final_messages = result.get("messages", [])
+                if not final_messages:
+                    return "Não foi possível gerar uma resposta."
+                
+                last_msg = final_messages[-1]
+                content = last_msg.content
+                
+                if isinstance(content, list):
+                    final_response = "".join([b.get("text", "") if isinstance(b, dict) else str(b) for b in content])
+                else:
+                    final_response = str(content)
 
-            if not final_response:
-                return "O agente processou sua mensagem, mas não gerou uma resposta de texto."
+            return final_response
 
-            # Salva no Firestore se o atendimento não acabou
-            # Mas se acabou com sucesso, limpamos tudo para evitar cache!
-            if "marcado com sucesso" in str(final_response).lower():
-                history_manager.clear()
-            else:
-                try:
-                    history_manager.add_message(new_human_msg)
-                    history_manager.add_message(AIMessage(content=str(final_response)))
-                except Exception as hist_err:
-                    print(f"[SESSÃO] ERRO CRÍTICO ao gravar no Firestore: {hist_err}")
-
-            return str(final_response)
         except Exception as e:
-            logging.error(f"[CalendarAgent] Erro na invocação: {e}")
-            return "Desculpe, tive um problema técnico. Por favor, tente novamente em instantes."
+            logging.error(f"[CalendarAgent] Erro no State invoke: {e}", exc_info=True)
+            return "Erro técnico no processamento do Estado."

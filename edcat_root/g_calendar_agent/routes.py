@@ -1,15 +1,11 @@
 import logging
-import os
-from flask import Blueprint, render_template, request, jsonify, g
+from flask import Blueprint, render_template, request, jsonify
 from edcat_root.auth import login_required, load_user_profile
-from langchain_core.messages import HumanMessage
-from .agent import CalendarAgent
-calendar_graph_agent = CalendarAgent()
 
-# Inicialize o logger do Blueprint
-logging.basicConfig(level=logging.INFO)
+# Importamos o worker para garantir que suas rotas sejam registradas
+from .worker import worker_bp, get_agent
 
-# Defina o Blueprint
+# Defina o Blueprint principal para a interface Web
 g_calendar_agent_bp = Blueprint(
     'g_calendar_agent',
     __name__,
@@ -17,34 +13,53 @@ g_calendar_agent_bp = Blueprint(
     static_folder='static'
 )
 
+# Registramos o worker_bp como um "filho" ou apenas compartilhamos as rotas
+# Dependendo de como o create_app registra, podemos adicionar as rotas do worker aqui
+g_calendar_agent_bp.register_blueprint(worker_bp)
+
 @g_calendar_agent_bp.route('/calendar_agent', methods=['GET'])
 @login_required
 @load_user_profile
 def calendar_agent_page(lang_code):
     """Renderiza a página principal do agente de agendamento."""
-    # O idioma vem do contexto da request/prefixo da blueprint
     return render_template('calendar_agent.html', lang_code=lang_code)
 
 @g_calendar_agent_bp.route('/calendar_agent/ask', methods=['POST'])
 @login_required
 @load_user_profile
 def calendar_ask(lang_code):
-    """Endpoint de chat síncrono para o agente de agendamento."""
+    """
+    Endpoint de chat SÍNCRONO para o agente de agendamento.
+    Invoca o agente diretamente e retorna a resposta sem polling.
+    Em produção (Cloud Run), o Cloud Tasks dispara o worker de forma assíncrona.
+    """
     try:
         data = request.json
         user_message = data.get('message', '') if data else ""
-        session_id = data.get('session_id', 'test_session') # Identificador de conversa
+        session_id = data.get('session_id', 'test_session')
         
         if not user_message:
             return jsonify({'response': 'Mensagem vazia.', 'status': 'error'}), 400
 
-        logging.info(f"[LangGraph Calendar] [Session: {session_id}] Recebido input: {user_message}")
+        logging.info(f"[Routes] [Sessão: {session_id}] Processando mensagem: {user_message[:30]}...")
 
-        # A invocação agora recebe diretamente o texto e a sessão
-        final_message = calendar_graph_agent.invoke(user_message, session_id=session_id)
+        # Invoca o agente diretamente (a mesma instância singleton)
+        from edcat_root.utils.tasks import run_agent_with_retry
+        agent = get_agent()
+        response_text = run_agent_with_retry(
+            agent=agent,
+            message=user_message,
+            session_id=session_id,
+            metadata={"lang": lang_code, "source": "web_cli"}
+        )
 
-        return jsonify({"response": final_message, "status": "success"})
+        logging.info(f"[Routes] [Sessão: {session_id}] Resposta gerada: {response_text[:50]}...")
+
+        return jsonify({
+            "response": response_text,
+            "status": "completed"
+        })
 
     except Exception as e:
-        logging.error(f"[LangGraph Calendar] Erro: {e}", exc_info=True)
-        return jsonify({'response': f"Vixe, algo deu errado no processamento: {str(e)}", 'status': 'error'}), 500
+        logging.error(f"[Routes] Erro ao processar: {e}", exc_info=True)
+        return jsonify({'response': "Erro ao processar sua mensagem.", 'status': 'error'}), 500

@@ -25,7 +25,7 @@ yarn-error.log*
 .firebase/
 .gcloudignore
 Dockerfile
-**/resources/chroma_db/ # Included in gcloudignore but excluded from general docker if we want strict control
+# **/resources/chroma_db/ # Excluded in general docker but we need it inside the container for RAG to work
 # Note: In our project, we WANT chroma_db in the image, so we might NOT ignore it here 
 # if the Dockerfile COPY command needs it. The current Dockerfile copies edcat_root/.
 

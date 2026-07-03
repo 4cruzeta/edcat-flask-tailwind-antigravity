@@ -8,6 +8,13 @@ def create_app():
     # Inicializa variáveis base do .env 
     load_dotenv()
     
+    # Previne conflito de chaves no SDK google-genai (Both GOOGLE_API_KEY and GEMINI_API_KEY are set)
+    # Movemos qualquer valor de GOOGLE_API_KEY para GEMINI_API_KEY e limpamos do processo.
+    google_key = os.environ.get("GOOGLE_API_KEY")
+    if google_key:
+        os.environ["GEMINI_API_KEY"] = google_key
+        os.environ.pop("GOOGLE_API_KEY", None)
+    
     # Instancia o App do Flask focado no Application Factory e define os diretórios
     app = Flask(__name__, template_folder='pages/templates', static_folder='static')
 

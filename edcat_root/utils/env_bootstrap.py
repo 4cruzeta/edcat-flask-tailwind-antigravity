@@ -16,10 +16,10 @@ def bootstrap_langsmith(project_name="calendar_agent-v5.0"):
         os.environ["LANGSMITH_PROJECT"] = project_name
         
         # 2. Carregamento de Chaves de API (Secret Manager)
-        # Seta tanto para LangChain quanto para Google SDK
+        # Seta a chave para o Google Gemini SDK (Gemini Developer API, não Vertex AI)
         api_keys = {
             "LANGSMITH_API_KEY": ["LANGSMITH_API_KEY", "LANGCHAIN_API_KEY"],
-            "GOOGLE_API_KEY": ["GOOGLE_API_KEY", "GEMINI_API_KEY"]
+            "GOOGLE_API_KEY": ["GEMINI_API_KEY"]
         }
         
         for secret_name, env_vars in api_keys.items():
@@ -27,9 +27,13 @@ def bootstrap_langsmith(project_name="calendar_agent-v5.0"):
             if val:
                 for var in env_vars:
                     os.environ[var] = val
-                logging.info(f"[Bootstrap] {secret_name} injetada.")
+                logging.info(f"[Bootstrap] {secret_name} injetada como {', '.join(env_vars)}.")
             else:
                 logging.warning(f"[Bootstrap] {secret_name} NÃO encontrada no Secret Manager.")
+        
+        # Garante que GOOGLE_API_KEY não coexista com GEMINI_API_KEY
+        # (evita o warning "Both GOOGLE_API_KEY and GEMINI_API_KEY are set" do google-genai SDK)
+        os.environ.pop("GOOGLE_API_KEY", None)
             
     except Exception as e:
         logging.error(f"[Bootstrap] Erro ao carregar configurações: {e}")
